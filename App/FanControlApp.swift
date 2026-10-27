@@ -47,6 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             popover.title = "Fan Control Popover Preview"
             popover.makeKeyAndOrderFront(nil)
             previewWindows.append(popover)
+            model.uiDidAppear()
             if let name = UserDefaults.standard.string(forKey: "FCPreviewSection"), let section = MainSection(rawValue: name) {
                 mainWindow.show(section)
             }
@@ -97,31 +98,33 @@ final class MainWindowController: NSObject, NSWindowDelegate {
 
     func show(_ section: MainSection?) {
         if let section { MainSection.pending = section }
-        if window == nil {
-            let hosting = NSHostingController(rootView: MainWindow().environment(model).environment(\.appActions, actions))
-            hosting.sceneBridgingOptions = [.toolbars, .title]
-            let w = NSWindow(contentViewController: hosting)
-            w.title = "Fan Control"
-            w.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
-            w.toolbarStyle = .unified
-            w.setContentSize(NSSize(width: 980, height: 660))
-            w.contentMinSize = NSSize(width: 820, height: 560)
-            w.setFrameAutosaveName("FanControlMain")
-            w.isReleasedWhenClosed = false
-            w.delegate = self
-            if !w.setFrameUsingName("FanControlMain") { w.center() }
-            window = w
-            model.uiDidAppear()
-        }
+        let w = window ?? makeWindow()
+        if !w.isVisible { model.uiDidAppear() }
         NotificationCenter.default.post(name: .selectMainSection, object: nil)
         NSApp.activate()
-        window?.makeKeyAndOrderFront(nil)
+        w.makeKeyAndOrderFront(nil)
     }
 
-    /// Tear the SwiftUI hierarchy down on close so a closed window costs nothing.
+    /// Built once and kept: closing only hides it, so reopening is instant. While hidden the model
+    /// doesn't publish, so its views do no work.
+    private func makeWindow() -> NSWindow {
+        let hosting = NSHostingController(rootView: MainWindow().environment(model).environment(\.appActions, actions))
+        hosting.sceneBridgingOptions = [.toolbars, .title]
+        let w = NSWindow(contentViewController: hosting)
+        w.title = "Fan Control"
+        w.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+        w.toolbarStyle = .unified
+        w.setContentSize(NSSize(width: 980, height: 660))
+        w.contentMinSize = NSSize(width: 820, height: 560)
+        w.isReleasedWhenClosed = false
+        w.delegate = self
+        if !w.setFrameUsingName("FanControlMain") { w.center() }
+        w.setFrameAutosaveName("FanControlMain")
+        window = w
+        return w
+    }
+
     func windowWillClose(_ notification: Notification) {
-        window?.contentViewController = nil
-        window = nil
         model.uiDidDisappear()
     }
 }

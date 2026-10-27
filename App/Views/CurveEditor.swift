@@ -12,6 +12,11 @@ struct CurveEditor: View {
 
     @State private var selected: UUID?
     @State private var dragging: UUID?
+    /// The curve as it's being dragged. Committed at most 5×/s and on release.
+    @State private var draft: FanCurve?
+    @State private var lastCommit = Date.distantPast
+
+    private var shown: FanCurve { draft ?? curve }
 
     private let tempRange: ClosedRange<Double> = 20...110
 
@@ -23,7 +28,7 @@ struct CurveEditor: View {
         }
     }
 
-    private var points: [CurvePoint] { curve.points.sorted { $0.temperature < $1.temperature } }
+    private var points: [CurvePoint] { shown.points.sorted { $0.temperature < $1.temperature } }
 
     private var chart: some View {
         Chart {
@@ -54,7 +59,7 @@ struct CurveEditor: View {
                     .annotation(position: .top, alignment: .center) {
                         Text("Now \(unit.format(t))").font(.caption2.weight(.medium)).foregroundStyle(.secondary)
                     }
-                PointMark(x: .value("Now", t.clamped(tempRange.lowerBound, tempRange.upperBound)), y: .value("Speed", curve.percent(at: t)))
+                PointMark(x: .value("Now", t.clamped(tempRange.lowerBound, tempRange.upperBound)), y: .value("Speed", shown.percent(at: t)))
                     .symbol(.circle)
                     .symbolSize(60)
                     .foregroundStyle(.white)
@@ -154,11 +159,16 @@ struct CurveEditor: View {
         guard let id = dragging,
               let t: Double = proxy.value(atX: loc.x),
               let pct: Double = proxy.value(atY: loc.y) else { return }
-        update(id, temperature: t.rounded(), percent: pct.rounded())
+        update(id, temperature: t.rounded(), percent: pct.rounded(), live: true)
     }
 
     private func endDrag(_ value: DragGesture.Value, proxy: ChartProxy, geo: GeometryProxy) {
         defer { dragging = nil }
+        if let d = draft {
+            onChange(d)
+            draft = nil
+            return
+        }
         guard dragging == nil, hypot(value.translation.width, value.translation.height) < 3,
               let loc = plotPoint(value.location, proxy: proxy, geo: geo) else { return }
         guard let t: Double = proxy.value(atX: loc.x), let pct: Double = proxy.value(atY: loc.y),
@@ -176,7 +186,7 @@ struct CurveEditor: View {
     }
 
     /// Moves a point, keeping it between its neighbors so the curve stays a function.
-    private func update(_ id: UUID, temperature: Double, percent: Double) {
+    private func update(_ id: UUID, temperature: Double, percent: Double, live: Bool = false) {
         let sorted = points
         guard let i = sorted.firstIndex(where: { $0.id == id }) else { return }
         let lo = i > 0 ? sorted[i - 1].temperature + 1 : tempRange.lowerBound
@@ -184,7 +194,13 @@ struct CurveEditor: View {
         var pts = sorted
         pts[i].temperature = temperature.clamped(lo, max(lo, hi))
         pts[i].percent = percent.clamped(0, 100)
-        onChange(FanCurve(points: pts))
+        let next = FanCurve(points: pts)
+        guard live else { return onChange(next) }
+        draft = next
+        if Date().timeIntervalSince(lastCommit) > 0.2 {
+            lastCommit = Date()
+            onChange(next)
+        }
     }
 
     private func remove(_ id: UUID) {

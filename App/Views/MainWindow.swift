@@ -33,18 +33,6 @@ enum MainSection: String, CaseIterable, Identifiable, Hashable {
 }
 
 struct MainWindow: View {
-    @State private var visible = true
-
-    var body: some View {
-        // Minimized or fully covered windows stop observing the model.
-        Group {
-            if visible { MainWindowContent() } else { Color.clear }
-        }
-        .background(WindowVisibilityReader { visible = $0 })
-    }
-}
-
-struct MainWindowContent: View {
     @Environment(AppModel.self) private var model
     @State private var section: MainSection? = .fans
 
@@ -487,7 +475,8 @@ struct AlertRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Toggle("", isOn: bind(\.enabled)).labelsHidden().toggleStyle(.switch).controlSize(.small)
-            SensorPicker(title: "", selection: rule.sensorID) { id in edit { $0.sensorID = id } }
+            SensorPicker(title: "", selection: rule.sensorID, context: rule.id.hashValue) { id in edit { $0.sensorID = id } }
+                .equatable()
                 .labelsHidden()
                 .frame(maxWidth: 260)
             Text("above").foregroundStyle(.secondary)
@@ -529,6 +518,7 @@ struct SettingsPane: View {
                     ForEach(MenuBarStyle.allCases) { Text($0.title).tag($0) }
                 }
                 SensorPicker(title: "Temperature sensor", selection: model.config.menuBarSensorID) { model.config.menuBarSensorID = $0 }
+                    .equatable()
                     .disabled(model.config.menuBarStyle == .icon || model.config.menuBarStyle == .rpm)
             }
             Section("General") {

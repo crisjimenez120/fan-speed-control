@@ -10,12 +10,19 @@ import UserNotifications
 @MainActor
 @Observable
 final class AppModel {
+    // Observable copies for the UI. Published only while a popover/window is visible, so hidden
+    // SwiftUI views get no invalidations and can stay alive for instant reopening.
     private(set) var fans: [FanInfo] = []
     private(set) var sensors: [SensorReading] = []
+    /// Sensor IDs, names and groups. Changes only when the sensor set changes, so pickers don't
+    /// rebuild their menus on every refresh.
+    private(set) var sensorCatalog: [SensorReading] = []
     /// Bumped once per refresh. Views that chart history read it to subscribe, then pull from `history`.
     private(set) var historyTick = 0
     /// Precomputed so the status item only re-renders when its text actually changes.
     private(set) var menuBarText = ""
+    /// Briefly replaces the menu bar text, e.g. with the profile name after the hotkey.
+    private(set) var menuBarFlash: String?
     private(set) var sensorsByID: [String: SensorReading] = [:]
     private(set) var helperState: HelperState = .checking
     /// The installed helper works but differs from the one bundled with this build.
@@ -44,6 +51,10 @@ final class AppModel {
         }
     }
 
+    // Always-current readings used by the control loop and menu bar.
+    @ObservationIgnored private var liveFans: [FanInfo] = []
+    @ObservationIgnored private var liveSensors: [SensorReading] = []
+    @ObservationIgnored private var liveSensorsByID: [String: SensorReading] = [:]
     @ObservationIgnored private var sensorHistory: [String: History] = [:]
     @ObservationIgnored private var fanHistory: [Int: History] = [:]
     @ObservationIgnored private let monitor = HardwareMonitor()
@@ -91,9 +102,13 @@ final class AppModel {
 
     var activeProfile: Profile? { config.profiles.first { $0.id == config.activeProfileID } }
 
-    var menuBarTemperature: Double? { sensorsByID[config.menuBarSensorID]?.celsius ?? sensorsByID["cpu.max"]?.celsius }
+    private var menuBarTemperature: Double? {
+        liveSensorsByID[config.menuBarSensorID]?.celsius ?? liveSensorsByID["cpu.max"]?.celsius
+    }
 
-    var averageRPM: Double {
+    var averageRPM: Double { Self.average(fans) }
+
+    private static func average(_ fans: [FanInfo]) -> Double {
         guard !fans.isEmpty else { return 0 }
         return fans.map(\.currentRPM).reduce(0, +) / Double(fans.count)
     }
@@ -116,7 +131,7 @@ final class AppModel {
     func setMode(_ mode: FanMode, for fan: Int) {
         config.liveModes[fan] = mode
         // Hand-editing leaves any profile unless it still matches.
-        if let p = activeProfile, (0..<fans.count).contains(where: { p.mode(for: $0) != self.mode(for: $0) }) {
+        if let p = activeProfile, (0..<liveFans.count).contains(where: { p.mode(for: $0) != self.mode(for: $0) }) {
             config.activeProfileID = nil
         }
         requestTick()
@@ -124,7 +139,7 @@ final class AppModel {
 
     func apply(_ profile: Profile) {
         config.activeProfileID = profile.id
-        config.liveModes = Dictionary(uniqueKeysWithValues: (0..<max(fans.count, 1)).map { ($0, profile.mode(for: $0)) })
+        config.liveModes = Dictionary(uniqueKeysWithValues: (0..<max(liveFans.count, 1)).map { ($0, profile.mode(for: $0)) })
         if config.notifyOnProfileChange { notify(title: "Fan profile: \(profile.name)", body: "") }
         requestTick()
     }
@@ -132,7 +147,21 @@ final class AppModel {
     func cycleProfile() {
         guard !config.profiles.isEmpty else { return }
         let idx = config.profiles.firstIndex { $0.id == config.activeProfileID } ?? -1
-        apply(config.profiles[(idx + 1) % config.profiles.count])
+        let profile = config.profiles[(idx + 1) % config.profiles.count]
+        apply(profile)
+        flashMenuBar(profile.name)
+    }
+
+    @ObservationIgnored private var flashTask: Task<Void, Never>?
+
+    private func flashMenuBar(_ text: String) {
+        menuBarFlash = text
+        flashTask?.cancel()
+        flashTask = Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled else { return }
+            menuBarFlash = nil
+        }
     }
 
     func saveLiveModesAsProfile(named name: String) {
@@ -153,7 +182,7 @@ final class AppModel {
     }
 
     func restoreBuiltInProfiles() {
-        let builtIns = Profile.builtIns(fanCount: max(fans.count, 1), cpuSensorID: "cpu.max")
+        let builtIns = Profile.builtIns(fanCount: max(liveFans.count, 1), cpuSensorID: "cpu.max")
         config.profiles = builtIns + config.profiles.filter { !$0.isBuiltIn }
     }
 
@@ -275,22 +304,20 @@ final class AppModel {
 
     private func tickOnce() async {
         let now = Date()
-        let full = visibleUI > 0 || now.timeIntervalSince(lastFullRead) >= 10 || sensors.isEmpty
+        let full = visibleUI > 0 || now.timeIntervalSince(lastFullRead) >= 10 || liveSensors.isEmpty
         let snap = await monitor.snapshot(only: full ? nil : requiredSensorIDs)
         if full { lastFullRead = now }
-        if fans != snap.fans { fans = snap.fans }
+        liveFans = snap.fans
         // A partial read refreshes what it read and keeps the last value for everything else.
         let merged: [SensorReading]
         if full {
             merged = snap.sensors
         } else {
             let fresh = Dictionary(snap.sensors.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-            merged = sensors.map { fresh[$0.id] ?? $0 }
+            merged = liveSensors.map { fresh[$0.id] ?? $0 }
         }
-        if sensors != merged {
-            sensors = merged
-            sensorsByID = Dictionary(merged.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-        }
+        liveSensors = merged
+        liveSensorsByID = Dictionary(merged.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         updateMenuBarText()
         if config.profiles.isEmpty, !snap.fans.isEmpty { restoreBuiltInProfiles() }
         applyLaunchProfileIfRequested()
@@ -304,7 +331,7 @@ final class AppModel {
     @ObservationIgnored private var launchProfileName = UserDefaults.standard.string(forKey: "FCProfile")
 
     private func applyLaunchProfileIfRequested() {
-        guard let name = launchProfileName, !fans.isEmpty else { return }
+        guard let name = launchProfileName, !liveFans.isEmpty else { return }
         launchProfileName = nil
         if let p = config.profiles.first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) { apply(p) }
     }
@@ -322,6 +349,7 @@ final class AppModel {
 
     func uiDidAppear() {
         visibleUI += 1
+        publish()
         requestTick()
     }
 
@@ -332,6 +360,19 @@ final class AppModel {
     private func recordHistory(_ snap: HardwareSnapshot, now: Date) {
         for s in snap.sensors { sensorHistory[s.id, default: History()].append(s.celsius, at: now) }
         for f in snap.fans { fanHistory[f.index, default: History()].append(f.currentRPM, at: now) }
+        if visibleUI > 0 { publish() }
+    }
+
+    /// Copies live readings into the observable properties the UI reads.
+    private func publish() {
+        if fans != liveFans { fans = liveFans }
+        if sensors != liveSensors {
+            sensors = liveSensors
+            sensorsByID = liveSensorsByID
+        }
+        let catalogChanged = sensorCatalog.count != liveSensors.count
+            || zip(sensorCatalog, liveSensors).contains { $0.id != $1.id }
+        if catalogChanged { sensorCatalog = liveSensors }
         historyTick &+= 1
     }
 
@@ -349,9 +390,10 @@ final class AppModel {
             displayedMenuBarTemp = nil
         }
         let temp = format(displayedMenuBarTemp)
-        if displayedMenuBarRPM.map({ abs($0 - averageRPM) >= 100 }) ?? true { displayedMenuBarRPM = averageRPM }
+        let liveAverage = Self.average(liveFans)
+        if displayedMenuBarRPM.map({ abs($0 - liveAverage) >= 100 }) ?? true { displayedMenuBarRPM = liveAverage }
         let avg = displayedMenuBarRPM ?? 0
-        let rpm = fans.isEmpty ? "—" : avg >= 1000 ? String(format: "%.1fk", avg / 1000) : avg.rpmString
+        let rpm = liveFans.isEmpty ? "—" : avg >= 1000 ? String(format: "%.1fk", avg / 1000) : avg.rpmString
         switch config.menuBarStyle {
         case .icon: text = ""
         case .temperature: text = temp
@@ -362,13 +404,13 @@ final class AppModel {
     }
 
     private func control(now: Date) async {
-        let temps = Dictionary(sensors.map { ($0.id, $0.celsius) }, uniquingKeysWith: { a, _ in a })
-        let wantsManual = fans.contains { mode(for: $0.index) != .auto }
+        let temps = liveSensorsByID.mapValues(\.celsius)
+        let wantsManual = liveFans.contains { mode(for: $0.index) != .auto }
         guard helperState.isReady else {
             if wantsManual, helperState == .checking { await refreshHelperState() }
             return
         }
-        for fan in fans {
+        for fan in liveFans {
             let limits = FanLimits(min: fan.minRPM, max: fan.maxRPM)
             if let rpm = controller.target(fan: fan.index, mode: mode(for: fan.index), limits: limits, temperatures: temps) {
                 let last = lastSent[fan.index]
@@ -394,8 +436,8 @@ final class AppModel {
     }
 
     private func evaluateAlerts() {
-        let temps = Dictionary(sensors.map { ($0.id, $0.celsius) }, uniquingKeysWith: { a, _ in a })
-        let byID = sensorsByID
+        let temps = liveSensorsByID.mapValues(\.celsius)
+        let byID = liveSensorsByID
         for rule in alertEvaluator.evaluate(config.alerts, temperatures: temps) {
             let name = byID[rule.sensorID]?.name ?? rule.sensorID
             notify(title: "\(name) is hot", body: "\(format(temps[rule.sensorID])) — above your \(format(rule.threshold)) alert.")

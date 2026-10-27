@@ -16,11 +16,12 @@ A menu bar app for controlling your Mac's fans. It's a native SwiftUI replacemen
   - **Fixed**: holds a constant RPM.
   - **Sensor**: speeds up linearly between two temperatures of any sensor.
   - **Curve**: follows a multi-point curve that you shape by dragging points in an editor.
-- **Profiles**: Silent, Balanced, Performance and Max are built in, and you can create your own. Switch from the menu bar or with **⌃⌥⌘F**.
+- **Profiles**: Silent, Balanced, Performance and Max are built in, and you can create your own. Switch from the menu bar panel, by right-clicking the menu bar icon, or with **⌃⌥⌘F** (the profile name briefly appears in the menu bar).
 - **Sensors**: CPU cores, GPU, memory, SSD, battery, palm rest, airflow and more, with live sparklines and 5 min to 24 h history charts. Pin your favourites to the menu.
 - **Alerts**: a notification when a sensor goes over a threshold.
 - **Menu bar item**: shows an icon, a temperature, fan speed, or both.
 - Launch at login, °C or °F, and an adjustable update interval.
+- **Lightweight**: about 0.5% CPU in the background. Nothing renders while the panel and window are closed, and they reopen instantly.
 - **Safe by design**: fans go back to macOS control when the app quits, crashes, or stops responding for 10 seconds, and whenever the Mac sleeps.
 
 ## Requirements

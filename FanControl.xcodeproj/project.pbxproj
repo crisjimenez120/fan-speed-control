@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0A886155FCD1BE6D911CDF09 /* MenuBarPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0980FA93B080263DCF02040B /* MenuBarPanel.swift */; };
 		0C30FC60E631CE1373C61413 /* FanModeEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D544E68C99799278259D6532 /* FanModeEditor.swift */; };
 		1BE67B3036EFC23143283DE3 /* SMCKit in Frameworks */ = {isa = PBXBuildFile; productRef = 05AF0A03235B6B75F5007661 /* SMCKit */; };
 		2467E90DDA1EBF7159AE3D98 /* HelperClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 583AD08C49ED5B9542FE4B92 /* HelperClient.swift */; };
@@ -40,6 +41,7 @@
 
 /* Begin PBXFileReference section */
 		06CD3AFA5B4BC21B1A229910 /* FanKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = FanKit; path = Packages/FanKit; sourceTree = SOURCE_ROOT; };
+		0980FA93B080263DCF02040B /* MenuBarPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarPanel.swift; sourceTree = "<group>"; };
 		21F72D4DEA4733FE41331C09 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		2E938055FF73704224866834 /* CurveEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurveEditor.swift; sourceTree = "<group>"; };
 		30AE748A5BA89B2E1C255209 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -100,6 +102,7 @@
 				583AD08C49ED5B9542FE4B92 /* HelperClient.swift */,
 				BFE757E1C69C658BF8148621 /* HelperInstaller.swift */,
 				F90ED8F455005C80EA7D73E5 /* HotKey.swift */,
+				0980FA93B080263DCF02040B /* MenuBarPanel.swift */,
 				8DE6AB5C2C3039F3BEEFEB4F /* StatusItemController.swift */,
 			);
 			path = Services;
@@ -298,6 +301,7 @@
 				A751877F476B596B430CD3BE /* HelperInstaller.swift in Sources */,
 				62430B32BA81E01D60763EF8 /* HotKey.swift in Sources */,
 				F6EEAA6A772101EE566D64CC /* MainWindow.swift in Sources */,
+				0A886155FCD1BE6D911CDF09 /* MenuBarPanel.swift in Sources */,
 				C3CBF2F76B00EE62516600EF /* PopoverView.swift in Sources */,
 				720B19D358CF495AAD6715E2 /* StatusItemController.swift in Sources */,
 				C9FD89742E93529A69F5181E /* Theme.swift in Sources */,

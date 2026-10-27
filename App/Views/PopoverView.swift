@@ -71,39 +71,52 @@ struct PopoverView: View {
     }
 }
 
+/// Profile switcher: a grid of tiles that wraps instead of scrolling, so every profile is visible.
 struct ProfileChips: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        ScrollView(.horizontal) {
-            GlassEffectContainer(spacing: 6) {
-                HStack(spacing: 6) {
-                    ForEach(model.config.profiles) { p in
-                        let active = p.id == model.config.activeProfileID
-                        Button {
-                            model.apply(p)
-                        } label: {
-                            Label(p.name, systemImage: p.symbol)
-                                .font(.callout.weight(active ? .semibold : .regular))
-                                .padding(.horizontal, 4)
-                        }
-                        .buttonStyle(active ? AnyPrimitiveButtonStyle(.glassProminent) : AnyPrimitiveButtonStyle(.glass))
-                        .controlSize(.small)
-                    }
-                }
-                .padding(.vertical, 2)
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 60, maximum: 110), spacing: 6)], spacing: 6) {
+            ForEach(model.config.profiles) { p in
+                ProfileTile(profile: p, active: p.id == model.config.activeProfileID) { model.apply(p) }
             }
         }
-        .scrollIndicators(.never)
         .help("Cycle profiles with \(HotKey.displayString)")
     }
 }
 
-/// Type-erases glass vs. prominent glass so chips can switch style with selection.
-struct AnyPrimitiveButtonStyle: PrimitiveButtonStyle {
-    private let make: (Configuration) -> AnyView
-    init<S: PrimitiveButtonStyle>(_ style: S) { make = { AnyView(style.makeBody(configuration: $0)) } }
-    func makeBody(configuration: Configuration) -> some View { make(configuration) }
+private struct ProfileTile: View {
+    let profile: Profile
+    let active: Bool
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: profile.symbol)
+                    .font(.system(size: 15, weight: .medium))
+                    .frame(height: 18)
+                Text(profile.name)
+                    .font(.caption2.weight(active ? .semibold : .regular))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .foregroundStyle(active ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+            .background {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(active ? AnyShapeStyle(.tint) : AnyShapeStyle(.fill.tertiary.opacity(hovering ? 1.6 : 1)))
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .animation(.easeOut(duration: 0.12), value: hovering)
+        .animation(.easeOut(duration: 0.18), value: active)
+        .accessibilityAddTraits(active ? .isSelected : [])
+    }
 }
 
 struct FanCard: View {

@@ -35,29 +35,14 @@ struct FanModeEditor: View {
     }
 
     private func fixedEditor(_ rpm: Double) -> some View {
-        let clamped = rpm.clamped(fan.minRPM, fan.maxRPM)
-        return VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text("Target").foregroundStyle(.secondary)
-                Spacer()
-                Text("\(clamped.rpmString) RPM").monospacedDigit().fontWeight(.medium)
-            }
-            .font(.caption)
-            Slider(value: Binding(get: { clamped }, set: { onChange(.fixed(rpm: ($0 / 50).rounded() * 50)) }),
-                   in: fan.minRPM...max(fan.maxRPM, fan.minRPM + 1)) {
-                EmptyView()
-            } minimumValueLabel: {
-                Image(systemName: "tortoise").font(.caption2)
-            } maximumValueLabel: {
-                Image(systemName: "hare").font(.caption2)
-            }
+        FixedRPMSlider(rpm: rpm.clamped(fan.minRPM, fan.maxRPM), range: fan.minRPM...max(fan.maxRPM, fan.minRPM + 1)) {
+            onChange(.fixed(rpm: $0))
         }
     }
 
     private func sensorEditor(id: String, low: Double, high: Double) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            SensorPicker(title: "Sensor", selection: id) { onChange(.sensor(sensorID: $0, lowTemp: low, highTemp: high)) }
-                .labelsHidden()
+            SensorPickerRow(selection: id, context: mode.hashValue) { onChange(.sensor(sensorID: $0, lowTemp: low, highTemp: high)) }
             HStack {
                 tempStepper("Ramp up from", value: low, range: 20...(high - 5)) { onChange(.sensor(sensorID: id, lowTemp: $0, highTemp: high)) }
                 Spacer()
@@ -79,8 +64,7 @@ struct FanModeEditor: View {
 
     @ViewBuilder
     private func curveEditor(id: String, curve: FanCurve) -> some View {
-        SensorPicker(title: "Sensor", selection: id) { onChange(.curve(sensorID: $0, curve: curve)) }
-            .labelsHidden()
+        SensorPickerRow(selection: id, context: mode.hashValue) { onChange(.curve(sensorID: $0, curve: curve)) }
         let temp = model.sensorsByID[id]?.celsius
         if compact {
             Button {
@@ -108,6 +92,48 @@ struct FanModeEditor: View {
         case .fixed: return .fixed(rpm: ((fan.currentRPM.clamped(fan.minRPM, fan.maxRPM)) / 50).rounded() * 50)
         case .sensor: return .sensor(sensorID: sensor, lowTemp: 50, highTemp: 85)
         case .curve: return .curve(sensorID: sensor, curve: .balanced)
+        }
+    }
+}
+
+/// RPM slider that tracks the mouse locally and commits to the model at most 5×/s while dragging,
+/// plus once on release, so dragging stays fluid.
+private struct FixedRPMSlider: View {
+    let rpm: Double
+    let range: ClosedRange<Double>
+    let commit: (Double) -> Void
+
+    @State private var draft: Double?
+    @State private var lastCommit = Date.distantPast
+
+    var body: some View {
+        let value = draft ?? rpm
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("Target").foregroundStyle(.secondary)
+                Spacer()
+                Text("\(value.rpmString) RPM").monospacedDigit().fontWeight(.medium)
+            }
+            .font(.caption)
+            Slider(value: Binding(get: { value }, set: { v in
+                let snapped = (v / 50).rounded() * 50
+                draft = snapped
+                if Date().timeIntervalSince(lastCommit) > 0.2 {
+                    lastCommit = Date()
+                    commit(snapped)
+                }
+            }), in: range) {
+                EmptyView()
+            } minimumValueLabel: {
+                Image(systemName: "tortoise").font(.caption2)
+            } maximumValueLabel: {
+                Image(systemName: "hare").font(.caption2)
+            } onEditingChanged: { editing in
+                if !editing, let d = draft {
+                    commit(d)
+                    draft = nil
+                }
+            }
         }
     }
 }

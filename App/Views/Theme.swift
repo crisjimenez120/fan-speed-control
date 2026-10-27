@@ -70,21 +70,80 @@ struct Sparkline: View {
     private var upper: Double { (samples.map(\.value).max() ?? 1) + 2 }
 }
 
-/// Horizontal bar showing where the fan sits between its min and max RPM.
+/// Horizontal bar showing where the fan sits between its min and max RPM. The fill is a
+/// Core Animation layer, so it glides between readings without any SwiftUI per-frame work.
 struct RPMBar: View {
     let fan: FanInfo
 
     var body: some View {
         let load = ((fan.currentRPM - fan.minRPM) / max(fan.maxRPM - fan.minRPM, 1)).clamped(0, 1)
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(.fill.tertiary)
-                Capsule()
-                    .fill(LinearGradient(colors: [.teal, Theme.color(forLoad: load)], startPoint: .leading, endPoint: .trailing))
-                    .frame(width: max(6, geo.size.width * load))
+        AnimatedBarView(fraction: load, endColor: NSColor(Theme.color(forLoad: load)))
+            .frame(height: 6)
+    }
+}
+
+private struct AnimatedBarView: NSViewRepresentable {
+    let fraction: Double
+    let endColor: NSColor
+
+    func makeNSView(context: Context) -> BarView { BarView() }
+    func updateNSView(_ view: BarView, context: Context) { view.set(fraction: fraction, endColor: endColor) }
+
+    final class BarView: NSView {
+        private let track = CALayer()
+        private let fill = CAGradientLayer()
+        private var fraction: Double = 0
+        private var endColor: NSColor = .systemTeal
+
+        override init(frame: NSRect) {
+            super.init(frame: frame)
+            wantsLayer = true
+            layer?.addSublayer(track)
+            track.addSublayer(fill)
+            fill.startPoint = CGPoint(x: 0, y: 0.5)
+            fill.endPoint = CGPoint(x: 1, y: 0.5)
+        }
+
+        required init?(coder: NSCoder) { fatalError() }
+
+        override func layout() {
+            super.layout()
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            track.frame = bounds
+            track.cornerRadius = bounds.height / 2
+            fill.cornerRadius = bounds.height / 2
+            fill.frame = fillFrame
+            CATransaction.commit()
+        }
+
+        override func viewDidChangeEffectiveAppearance() {
+            super.viewDidChangeEffectiveAppearance()
+            applyColors()
+        }
+
+        private var fillFrame: CGRect {
+            CGRect(x: 0, y: 0, width: max(bounds.height, bounds.width * fraction), height: bounds.height)
+        }
+
+        func set(fraction: Double, endColor: NSColor) {
+            let colorChanged = endColor != self.endColor
+            self.fraction = fraction
+            self.endColor = endColor
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(0.8)
+            CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
+            fill.frame = fillFrame
+            if colorChanged { applyColors() }
+            CATransaction.commit()
+        }
+
+        private func applyColors() {
+            effectiveAppearance.performAsCurrentDrawingAppearance {
+                track.backgroundColor = NSColor.quaternaryLabelColor.cgColor
+                fill.colors = [NSColor.systemTeal.cgColor, endColor.cgColor]
             }
         }
-        .frame(height: 6)
     }
 }
 
@@ -185,58 +244,55 @@ private struct SpinningSymbolView: NSViewRepresentable {
     }
 }
 
-/// Reports whether the hosting window is on screen. The menu bar popover's window stays alive
-/// when closed, so this lets us stop rendering it.
-struct WindowVisibilityReader: NSViewRepresentable {
-    let onChange: (Bool) -> Void
+/// Sensor menu. Items come from the stable sensor catalog (names only, no live values) and the
+/// view is Equatable, so the menu isn't rebuilt on every refresh.
+struct SensorPicker: View, Equatable {
+    @Environment(AppModel.self) private var model
+    let title: String
+    let selection: String
+    /// Hash of whatever `onChange` captures. Re-render when it changes so the closure is never stale.
+    var context: Int = 0
+    let onChange: @MainActor (String) -> Void
 
-    func makeNSView(context: Context) -> ObserverView {
-        let v = ObserverView()
-        v.onChange = onChange
-        return v
+    nonisolated static func == (a: Self, b: Self) -> Bool {
+        a.title == b.title && a.selection == b.selection && a.context == b.context
     }
 
-    func updateNSView(_ view: ObserverView, context: Context) { view.onChange = onChange }
-
-    final class ObserverView: NSView {
-        var onChange: ((Bool) -> Void)?
-        private var token: NSObjectProtocol?
-
-        override func viewDidMoveToWindow() {
-            super.viewDidMoveToWindow()
-            if let token { NotificationCenter.default.removeObserver(token) }
-            guard let window else { return }
-            token = NotificationCenter.default.addObserver(forName: NSWindow.didChangeOcclusionStateNotification, object: window, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.report() }
+    var body: some View {
+        let catalog = model.sensorCatalog
+        Picker(title, selection: Binding(get: { selection }, set: onChange)) {
+            let grouped = Dictionary(grouping: catalog, by: \.group)
+            ForEach(grouped.keys.sorted(), id: \.self) { group in
+                Section(group.rawValue) {
+                    ForEach(grouped[group]!.sorted { ($0.isSummary ? 0 : 1, $0.name) < ($1.isSummary ? 0 : 1, $1.name) }) { s in
+                        Text(s.name).tag(s.id)
+                    }
+                }
             }
-            report()
-        }
-
-        private func report() {
-            onChange?(window?.occlusionState.contains(.visible) ?? false)
+            if !catalog.contains(where: { $0.id == selection }) {
+                Text("Unavailable sensor").tag(selection)
+            }
         }
     }
 }
 
-struct SensorPicker: View {
+/// Sensor picker plus the sensor's current reading.
+struct SensorPickerRow: View {
     @Environment(AppModel.self) private var model
-    let title: String
     let selection: String
+    var context: Int = 0
     let onChange: @MainActor (String) -> Void
 
     var body: some View {
-        Picker(title, selection: Binding(get: { selection }, set: onChange)) {
-            let grouped = Dictionary(grouping: model.sensors, by: \.group)
-            ForEach(grouped.keys.sorted(), id: \.self) { group in
-                Section(group.rawValue) {
-                    ForEach(grouped[group]!.sorted { ($0.isSummary ? 0 : 1, $0.name) < ($1.isSummary ? 0 : 1, $1.name) }) { s in
-                        Text("\(s.name)  \(model.format(s.celsius))").tag(s.id)
-                    }
-                }
-            }
-            if model.sensorsByID[selection] == nil {
-                Text("Unavailable sensor").tag(selection)
-            }
+        HStack(spacing: 8) {
+            SensorPicker(title: "Sensor", selection: selection, context: context, onChange: onChange)
+                .equatable()
+                .labelsHidden()
+                .fixedSize()
+            Text(model.format(model.sensorsByID[selection]?.celsius))
+                .monospacedDigit()
+                .foregroundStyle(model.sensorsByID[selection].map { Theme.color(forCelsius: $0.celsius) } ?? .secondary)
+            Spacer(minLength: 0)
         }
     }
 }

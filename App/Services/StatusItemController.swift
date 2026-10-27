@@ -3,14 +3,26 @@ import FanCore
 import Observation
 import SwiftUI
 
-/// Owns the menu bar item. Drawn directly with AppKit (cheap to update), and the popover's
-/// SwiftUI content exists only while the popover is open.
+/// Owns the menu bar item, drawn directly with AppKit because that's cheap to update. The popover's
+/// SwiftUI content is built once and kept, so it opens instantly; while it's closed the model
+/// stops publishing, so the hidden views cost nothing.
 @MainActor
-final class StatusItemController: NSObject, NSPopoverDelegate {
+final class StatusItemController: NSObject {
     private let model: AppModel
     private let actions: AppActions
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-    private let popover = NSPopover()
+    private lazy var panel: MenuBarPanel = {
+        let p = MenuBarPanel(content: hosting)
+        p.onClose = { [weak self] in self?.panelDidClose() }
+        return p
+    }()
+    /// When the panel just closed because the status item was clicked, don't immediately reopen it.
+    private var lastClose = Date.distantPast
+    private lazy var hosting: NSHostingController<AnyView> = {
+        let h = NSHostingController(rootView: AnyView(PopoverView().environment(model).environment(\.appActions, actions)))
+        h.sizingOptions = .preferredContentSize
+        return h
+    }()
     private var renderedTitle: String?
     private var renderedSymbol: String?
 
@@ -18,9 +30,6 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         self.model = model
         self.actions = actions
         super.init()
-        popover.behavior = .transient
-        popover.animates = true
-        popover.delegate = self
         if let button = item.button {
             button.target = self
             button.action = #selector(clicked(_:))
@@ -29,6 +38,8 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
             button.setAccessibilityTitle("Fan Control")
         }
         observe()
+        // Pay SwiftUI's first-build cost now rather than on the first click.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [self] in panel.prewarm() }
     }
 
     // MARK: Rendering
@@ -36,7 +47,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     /// Re-renders only when the values it reads change, and only touches AppKit when they differ.
     private func observe() {
         withObservationTracking {
-            render(title: model.menuBarText, controlling: !model.controlledFans.isEmpty)
+            render(title: model.menuBarFlash ?? model.menuBarText, controlling: !model.controlledFans.isEmpty)
         } onChange: { [weak self] in
             Task { @MainActor in self?.observe() }
         }
@@ -66,28 +77,26 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     @objc private func clicked(_ sender: NSStatusBarButton) {
         if NSApp.currentEvent?.type == .rightMouseUp {
             showMenu()
-        } else if popover.isShown {
+        } else if panel.isVisible {
             closePopover()
-        } else {
+        } else if Date().timeIntervalSince(lastClose) > 0.25 {
             showPopover(from: sender)
         }
     }
 
     private func showPopover(from button: NSStatusBarButton) {
-        let hosting = NSHostingController(rootView: PopoverView().environment(model).environment(\.appActions, actions))
-        hosting.sizingOptions = .preferredContentSize
-        popover.contentViewController = hosting
         model.uiDidAppear()
-        NSApp.activate()
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        button.highlight(true)
+        panel.show(below: button)
     }
 
     func closePopover() {
-        popover.performClose(nil)
+        panel.dismiss()
     }
 
-    func popoverDidClose(_ notification: Notification) {
-        popover.contentViewController = nil
+    private func panelDidClose() {
+        lastClose = Date()
+        item.button?.highlight(false)
         model.uiDidDisappear()
     }
 
