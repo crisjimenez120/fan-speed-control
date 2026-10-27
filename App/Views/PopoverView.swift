@@ -191,6 +191,16 @@ struct HelperBanner: View {
             EmptyView()
         case .notInstalled where !wantsManual:
             EmptyView()
+        case .outdated:
+            Card {
+                HStack {
+                    Label("A newer helper is available.", systemImage: "arrow.down.circle").font(.callout)
+                    Spacer()
+                    Button(model.installing ? "Updating…" : "Update") { model.installHelper() }
+                        .buttonStyle(.glassProminent)
+                        .disabled(model.installing)
+                }
+            }
         default:
             Card {
                 VStack(alignment: .leading, spacing: 8) {

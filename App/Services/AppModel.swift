@@ -173,7 +173,10 @@ final class AppModel {
                 : .notInstalled
             return
         }
-        helperState = version == FanShared.HelperConstants.version ? .ready : .outdated(installed: version)
+        // Same version string but a different binary means a rebuilt helper that hasn't been reinstalled.
+        let sameBinary = FileManager.default.contentsEqual(atPath: FanShared.HelperConstants.helperPath,
+                                                           andPath: HelperInstaller.bundledHelperURL.path)
+        helperState = version == FanShared.HelperConstants.version && sameBinary ? .ready : .outdated(installed: version)
     }
 
     func installHelper() {

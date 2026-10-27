@@ -25,7 +25,7 @@ A menu bar app for controlling your Mac's fans. It's a native SwiftUI replacemen
 
 ## Requirements
 
-- macOS 26 (Tahoe) or later. Apple Silicon is supported, and Intel Macs with SMC fan keys should work.
+- macOS 26 (Tahoe) or later. Tested on an M1 Max MacBook Pro running macOS 27. Other Apple Silicon Macs are supported (M3 and later use the `Ftst` unlock), and Intel Macs with SMC fan keys should work.
 - Xcode 26 or later (from the App Store).
 - [Homebrew](https://brew.sh), used to install `xcodegen`.
 
@@ -53,7 +53,7 @@ Reading temperatures and fan speeds works right away. **Changing** fan speeds re
 1. Click the fan icon in the menu bar and pick any mode other than Auto (or go to **Settings → Install Helper**).
 2. Click **Install Helper** and enter your password.
 
-This only happens once. The helper is installed to `/Library/PrivilegedHelperTools/com.crisjimenez.FanControl.Helper` and runs as a LaunchDaemon. It can only set fan speeds, and every value it's given is clamped to the fan's own minimum and maximum.
+This only happens once, plus again after an update that changes the helper (the app will show an **Update** button). The helper is installed to `/Library/PrivilegedHelperTools/com.crisjimenez.FanControl.Helper` and runs as a LaunchDaemon. It can only set fan speeds, and every value it's given is clamped to the fan's own minimum and maximum.
 
 ### Code signing
 
