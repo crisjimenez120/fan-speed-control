@@ -16,8 +16,9 @@ actor HardwareMonitor {
 
     var isAvailable: Bool { reader != nil }
 
-    func snapshot() -> HardwareSnapshot {
+    /// `only` limits which temperatures are read; nil reads all of them.
+    func snapshot(only ids: Set<String>?) -> HardwareSnapshot {
         guard let reader else { return HardwareSnapshot(fans: [], sensors: []) }
-        return HardwareSnapshot(fans: reader.readFans(), sensors: reader.readSensors())
+        return HardwareSnapshot(fans: reader.readFans(), sensors: reader.readSensors(only: ids))
     }
 }

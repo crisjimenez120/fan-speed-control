@@ -69,8 +69,26 @@ struct HistoryTests {
         let t0 = Date(timeIntervalSince1970: 0)
         for i in 0..<30 { h.append(Double(i), at: t0.addingTimeInterval(Double(i))) }
         #expect(h.recent.count == 11)
+        #expect(h.recent.map(\.value) == (19...29).map(Double.init))
         #expect(h.archive.count == 6)
         #expect(h.latest == 29)
+    }
+
+    @Test func archiveWrapsAroundAfter24Hours() {
+        var h = History(recentWindow: 10, archiveWindow: 100, archiveInterval: 10)
+        let t0 = Date(timeIntervalSince1970: 0)
+        for i in 0..<500 { h.append(Double(i), at: t0.addingTimeInterval(Double(i))) }
+        #expect(h.archive.count == 11)
+        #expect(h.archive.first?.value == 390)
+        #expect(h.archive.last?.value == 490)
+    }
+
+    @Test func samplesFiltersWindow() {
+        var h = History(recentWindow: 60, archiveWindow: 600, archiveInterval: 30)
+        let t0 = Date(timeIntervalSince1970: 0)
+        for i in 0..<60 { h.append(Double(i), at: t0.addingTimeInterval(Double(i))) }
+        let now = t0.addingTimeInterval(59)
+        #expect(h.samples(last: 10, now: now).map(\.value) == (49...59).map(Double.init))
     }
 }
 

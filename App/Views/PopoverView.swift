@@ -4,7 +4,7 @@ import SwiftUI
 
 struct PopoverView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.openMain) private var openMain
+    @Environment(\.appActions) private var actions
 
     var body: some View {
         VStack(spacing: 12) {
@@ -25,13 +25,11 @@ struct PopoverView: View {
 
     private var header: some View {
         HStack(alignment: .center, spacing: 10) {
-            SpinningFan(rpm: model.averageRPM, size: 22)
-                .foregroundStyle(Theme.color(forLoad: model.fanLoad))
+            SpinningFan(rpm: model.averageRPM, size: 22, tint: Theme.color(forLoad: model.fanLoad))
             VStack(alignment: .leading, spacing: 0) {
                 Text("Fan Control").font(.headline)
                 Text(model.activeProfile?.name ?? (model.config.liveModes.values.allSatisfy { $0 == .auto } ? "System control" : "Custom"))
                     .font(.caption).foregroundStyle(.secondary)
-                    .contentTransition(.opacity)
             }
             Spacer()
             if let t = model.sensorsByID["cpu.max"]?.celsius {
@@ -39,8 +37,6 @@ struct PopoverView: View {
                     Text(model.format(t))
                         .font(.system(size: 26, weight: .semibold, design: .rounded).monospacedDigit())
                         .foregroundStyle(Theme.color(forCelsius: t))
-                        .contentTransition(.numericText(value: t))
-                        .animation(.smooth, value: t)
                     Text("CPU").font(.caption2).foregroundStyle(.secondary)
                 }
             }
@@ -50,7 +46,7 @@ struct PopoverView: View {
     private var footer: some View {
         HStack {
             Button {
-                openMain()
+                actions?.openMain(nil)
             } label: {
                 Label("Open Fan Control", systemImage: "macwindow")
             }
@@ -117,15 +113,12 @@ struct FanCard: View {
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .firstTextBaseline) {
+                HStack(alignment: .center) {
                     SpinningFan(rpm: fan.currentRPM, size: 15)
-                        .foregroundStyle(.secondary)
                     Text(fan.name).font(.subheadline.weight(.semibold))
                     Spacer()
                     Text(fan.currentRPM.rpmString)
                         .font(.system(.title3, design: .rounded).weight(.semibold).monospacedDigit())
-                        .contentTransition(.numericText(value: fan.currentRPM))
-                        .animation(.smooth, value: fan.currentRPM)
                     Text("RPM").font(.caption2).foregroundStyle(.secondary)
                 }
                 RPMBar(fan: fan)
@@ -148,7 +141,7 @@ struct FanCard: View {
 
 struct SensorStrip: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.openMain) private var openMain
+    @Environment(\.appActions) private var actions
 
     var body: some View {
         Card(padding: 10) {
@@ -160,7 +153,7 @@ struct SensorStrip: View {
                             .foregroundStyle(.secondary)
                         Text(s.name).font(.callout).lineLimit(1)
                         Spacer(minLength: 8)
-                        Sparkline(samples: model.sensorHistory[s.id]?.samples(last: 300) ?? [], color: Theme.color(forCelsius: s.celsius))
+                        Sparkline(samples: model.sensorSamples(s.id, last: 300), color: Theme.color(forCelsius: s.celsius))
                             .frame(width: 70, height: 18)
                         Text(model.format(s.celsius))
                             .font(.callout.monospacedDigit().weight(.medium))
@@ -169,7 +162,7 @@ struct SensorStrip: View {
                     }
                 }
                 Button {
-                    openMain(.sensors)
+                    actions?.openMain(.sensors)
                 } label: {
                     Text("All \(model.sensors.count) sensors")
                         .font(.caption)
@@ -187,11 +180,7 @@ struct HelperBanner: View {
     var body: some View {
         let wantsManual = model.fans.contains { model.mode(for: $0.index) != .auto }
         switch model.helperState {
-        case .ready, .checking:
-            EmptyView()
-        case .notInstalled where !wantsManual:
-            EmptyView()
-        case .outdated:
+        case .ready where model.helperUpdateAvailable:
             Card {
                 HStack {
                     Label("A newer helper is available.", systemImage: "arrow.down.circle").font(.callout)
@@ -201,6 +190,10 @@ struct HelperBanner: View {
                         .disabled(model.installing)
                 }
             }
+        case .ready, .checking:
+            EmptyView()
+        case .notInstalled where !wantsManual:
+            EmptyView()
         default:
             Card {
                 VStack(alignment: .leading, spacing: 8) {
@@ -238,34 +231,5 @@ struct ErrorBanner: View {
         }
         .padding(10)
         .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
-    }
-}
-
-struct MenuBarLabel: View {
-    let model: AppModel
-
-    var body: some View {
-        let temp = model.format(model.menuBarTemperature)
-        let avg = model.averageRPM
-        let rpm = model.fans.isEmpty ? "—" : avg >= 1000 ? String(format: "%.1fk", avg / 1000) : avg.rpmString
-        switch model.config.menuBarStyle {
-        case .icon:
-            Image(systemName: model.controlledFans.isEmpty ? "fan" : "fan.fill")
-        case .temperature:
-            HStack(spacing: 3) {
-                Image(systemName: model.controlledFans.isEmpty ? "fan" : "fan.fill")
-                Text(temp).monospacedDigit()
-            }
-        case .rpm:
-            HStack(spacing: 3) {
-                Image(systemName: model.controlledFans.isEmpty ? "fan" : "fan.fill")
-                Text(rpm).monospacedDigit()
-            }
-        case .both:
-            HStack(spacing: 3) {
-                Image(systemName: model.controlledFans.isEmpty ? "fan" : "fan.fill")
-                Text("\(temp) \(rpm)").monospacedDigit()
-            }
-        }
     }
 }

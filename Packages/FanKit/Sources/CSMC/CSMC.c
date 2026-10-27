@@ -70,6 +70,19 @@ kern_return_t csmc_read(io_connect_t conn, uint32_t key, CSMCKeyInfo *info, uint
     return kIOReturnSuccess;
 }
 
+kern_return_t csmc_read_sized(io_connect_t conn, uint32_t key, uint32_t size, uint8_t outBytes[32]) {
+    SMCKeyData in, out;
+    memset(&in, 0, sizeof in); memset(&out, 0, sizeof out);
+    in.key = key;
+    in.keyInfo.dataSize = size;
+    in.data8 = SMC_CMD_READ_BYTES;
+    kern_return_t r = call(conn, &in, &out);
+    if (r != kIOReturnSuccess) return r;
+    if (out.result != 0) return kIOReturnError;
+    memcpy(outBytes, out.bytes, 32);
+    return kIOReturnSuccess;
+}
+
 kern_return_t csmc_write(io_connect_t conn, uint32_t key, const uint8_t *bytes, uint32_t size) {
     CSMCKeyInfo info;
     kern_return_t r = csmc_key_info(conn, key, &info);
@@ -154,4 +167,39 @@ CFArrayRef csmc_copy_hid_temperatures(void) {
     }
     CFRelease(services);
     return result;
+}
+
+double csmc_hid_max_temperature(const char *prefix) {
+    static CFMutableArrayRef cached = NULL;
+    static char cachedPrefix[32] = {0};
+    if (!cached || strncmp(cachedPrefix, prefix, sizeof cachedPrefix) != 0) {
+        IOHIDEventSystemClientRef client = sharedClient();
+        if (!client) return -1;
+        CFArrayRef services = IOHIDEventSystemClientCopyServices(client);
+        if (!services) return -1;
+        if (cached) CFRelease(cached);
+        cached = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
+        strncpy(cachedPrefix, prefix, sizeof cachedPrefix - 1);
+        CFStringRef cfPrefix = CFStringCreateWithCString(NULL, prefix, kCFStringEncodingUTF8);
+        for (CFIndex i = 0; i < CFArrayGetCount(services); i++) {
+            IOHIDServiceClientRef svc = (IOHIDServiceClientRef)CFArrayGetValueAtIndex(services, i);
+            CFTypeRef name = IOHIDServiceClientCopyProperty(svc, CFSTR("Product"));
+            if (name && CFGetTypeID(name) == CFStringGetTypeID() && CFStringHasPrefix((CFStringRef)name, cfPrefix)) {
+                CFArrayAppendValue(cached, svc);
+            }
+            if (name) CFRelease(name);
+        }
+        CFRelease(cfPrefix);
+        CFRelease(services);
+    }
+    double best = -1;
+    for (CFIndex i = 0; i < CFArrayGetCount(cached); i++) {
+        IOHIDServiceClientRef svc = (IOHIDServiceClientRef)CFArrayGetValueAtIndex(cached, i);
+        IOHIDEventRef event = IOHIDServiceClientCopyEvent(svc, kIOHIDEventTypeTemperature, 0, 0);
+        if (!event) continue;
+        double v = IOHIDEventGetFloatValue(event, IOHIDEventFieldBase(kIOHIDEventTypeTemperature));
+        CFRelease((CFTypeRef)event);
+        if (v > best) best = v;
+    }
+    return best;
 }

@@ -4,90 +4,128 @@ import SwiftUI
 @main
 struct FanControlApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
-    @State private var model = AppModel()
 
     var body: some Scene {
-        MenuBarExtra {
-            PopoverView()
-                .environment(model)
-                .onAppear { delegate.model = model }
-        } label: {
-            MenuBarLabel(model: model)
-                .onAppear { delegate.model = model }
-        }
-        .menuBarExtraStyle(.window)
-
-        Window("Fan Control", id: "main") {
-            MainWindow()
-                .environment(model)
-                .frame(minWidth: 820, minHeight: 560)
-        }
-        .windowToolbarStyle(.unified)
-        .defaultSize(width: 980, height: 660)
+        // The status item, popover, and main window are AppKit-managed (see AppDelegate),
+        // so SwiftUI only does work while something is actually on screen.
+        Settings { EmptyView() }
     }
 }
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    var model: AppModel?
-    private var previewWindow: NSWindow?
-    private var extraWindows: [NSWindow] = []
+    private var model: AppModel!
+    private var statusItem: StatusItemController!
+    private var mainWindow: MainWindowController!
+    private var previewWindows: [NSWindow] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // `-FCPreviewPopover YES` shows the popover in a normal window, for screenshots and debugging.
-        guard UserDefaults.standard.bool(forKey: "FCPreviewPopover") else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            MainActor.assumeIsolated {
-                guard let model = self.model else { return }
-                let window = NSWindow(contentViewController: NSHostingController(rootView: PopoverView().environment(model)))
-                window.title = "Fan Control Popover Preview"
-                window.makeKeyAndOrderFront(nil)
-                NSApp.activate()
-                self.previewWindow = window
-                if let name = UserDefaults.standard.string(forKey: "FCPreviewSection"), let section = MainSection(rawValue: name) {
-                    MainSection.pending = section
-                    let main = NSWindow(contentViewController: NSHostingController(rootView: MainWindow().environment(model).frame(width: 1000, height: 680)))
-                    main.title = "Main \(name)"
-                    main.makeKeyAndOrderFront(nil)
-                    self.extraWindows.append(main)
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
-                    for w in NSApp.windows where w.isVisible && w.contentView != nil && w.frame.width > 200 {
-                        Self.snapshot(w, to: "/tmp/fc-\(w.title.isEmpty ? "untitled" : w.title.replacingOccurrences(of: " ", with: "-")).png")
-                    }
+        model = AppModel()
+        let actions = AppActions()
+        mainWindow = MainWindowController(model: model, actions: actions)
+        statusItem = StatusItemController(model: model, actions: actions)
+        actions.openMain = { [weak self] section in
+            self?.statusItem.closePopover()
+            self?.mainWindow.show(section)
+        }
+        if UserDefaults.standard.bool(forKey: "FCPreviewPopover") { showPreview(actions) }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        model.shutdown()
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        mainWindow.show(nil)
+        return false
+    }
+
+    /// `-FCPreviewPopover YES [-FCPreviewSection fans]` renders the UI into PNGs in /tmp, for screenshots.
+    private func showPreview(_ actions: AppActions) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [self] in
+            let popover = NSWindow(contentViewController: NSHostingController(rootView: PopoverView().environment(model).environment(\.appActions, actions)))
+            popover.title = "Fan Control Popover Preview"
+            popover.makeKeyAndOrderFront(nil)
+            previewWindows.append(popover)
+            if let name = UserDefaults.standard.string(forKey: "FCPreviewSection"), let section = MainSection(rawValue: name) {
+                mainWindow.show(section)
+            }
+            NSApp.activate()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+                for w in NSApp.windows where w.isVisible && w.frame.width > 200 {
+                    Self.snapshot(w, to: "/tmp/fc-\(w.title.isEmpty ? "untitled" : w.title.replacingOccurrences(of: " ", with: "-")).png")
                 }
             }
         }
     }
 
-    @MainActor private static func snapshot(_ window: NSWindow, to path: String) {
+    private static func snapshot(_ window: NSWindow, to path: String) {
         guard let view = window.contentView?.superview ?? window.contentView,
               let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
         view.cacheDisplay(in: view.bounds, to: rep)
         try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
     }
+}
 
-    func applicationWillTerminate(_ notification: Notification) {
-        MainActor.assumeIsolated { model?.shutdown() }
+/// App-level navigation available to SwiftUI views.
+@MainActor
+final class AppActions {
+    var openMain: (MainSection?) -> Void = { _ in }
+}
+
+private struct AppActionsKey: EnvironmentKey {
+    static let defaultValue: AppActions? = nil
+}
+
+extension EnvironmentValues {
+    var appActions: AppActions? {
+        get { self[AppActionsKey.self] }
+        set { self[AppActionsKey.self] = newValue }
     }
 }
 
-/// Opens (or focuses) the main window. The app is a menu bar agent, so it must activate itself first.
 @MainActor
-struct OpenMainWindow {
-    let openWindow: OpenWindowAction
+final class MainWindowController: NSObject, NSWindowDelegate {
+    private let model: AppModel
+    private let actions: AppActions
+    private var window: NSWindow?
 
-    func callAsFunction(_ section: MainSection? = nil) {
+    init(model: AppModel, actions: AppActions) {
+        self.model = model
+        self.actions = actions
+    }
+
+    func show(_ section: MainSection?) {
         if let section { MainSection.pending = section }
-        NSApp.activate()
-        openWindow(id: "main")
+        if window == nil {
+            let hosting = NSHostingController(rootView: MainWindow().environment(model).environment(\.appActions, actions))
+            hosting.sceneBridgingOptions = [.toolbars, .title]
+            let w = NSWindow(contentViewController: hosting)
+            w.title = "Fan Control"
+            w.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+            w.toolbarStyle = .unified
+            w.setContentSize(NSSize(width: 980, height: 660))
+            w.contentMinSize = NSSize(width: 820, height: 560)
+            w.setFrameAutosaveName("FanControlMain")
+            w.isReleasedWhenClosed = false
+            w.delegate = self
+            if !w.setFrameUsingName("FanControlMain") { w.center() }
+            window = w
+            model.uiDidAppear()
+        }
         NotificationCenter.default.post(name: .selectMainSection, object: nil)
+        NSApp.activate()
+        window?.makeKeyAndOrderFront(nil)
+    }
+
+    /// Tear the SwiftUI hierarchy down on close so a closed window costs nothing.
+    func windowWillClose(_ notification: Notification) {
+        window?.contentViewController = nil
+        window = nil
+        model.uiDidDisappear()
     }
 }
 
 extension Notification.Name {
     static let selectMainSection = Notification.Name("FanControl.selectMainSection")
-}
-
-extension EnvironmentValues {
-    var openMain: OpenMainWindow { OpenMainWindow(openWindow: openWindow) }
 }

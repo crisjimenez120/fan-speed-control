@@ -5,7 +5,7 @@ import SwiftUI
 /// Edits a fan's mode. Used in the popover (compact) and the main window.
 struct FanModeEditor: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.openMain) private var openMain
+    @Environment(\.appActions) private var actions
     let fan: FanInfo
     let mode: FanMode
     var compact = false
@@ -84,7 +84,7 @@ struct FanModeEditor: View {
         let temp = model.sensorsByID[id]?.celsius
         if compact {
             Button {
-                openMain(.fans)
+                actions?.openMain(.fans)
             } label: {
                 CurveThumbnail(curve: curve, currentTemp: temp)
                     .frame(height: 44)

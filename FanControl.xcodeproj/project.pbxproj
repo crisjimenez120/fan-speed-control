@@ -14,6 +14,7 @@
 		4698D26DF9F57D755AF7A5B2 /* FanShared in Frameworks */ = {isa = PBXBuildFile; productRef = 49EA01FD9C8E2B504F33AF36 /* FanShared */; };
 		5928BC367E4C807012D687B9 /* HardwareMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3BDBD6A27F07E14E64810EF /* HardwareMonitor.swift */; };
 		62430B32BA81E01D60763EF8 /* HotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90ED8F455005C80EA7D73E5 /* HotKey.swift */; };
+		720B19D358CF495AAD6715E2 /* StatusItemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DE6AB5C2C3039F3BEEFEB4F /* StatusItemController.swift */; };
 		A1B2ABBBE23C448B268E4250 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79D4EF65DAFB9036C5B56DA /* AppConfig.swift */; };
 		A751877F476B596B430CD3BE /* HelperInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFE757E1C69C658BF8148621 /* HelperInstaller.swift */; };
 		C3CBF2F76B00EE62516600EF /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B919BA76367F084A0006BE0 /* PopoverView.swift */; };
@@ -49,6 +50,7 @@
 		674E7B5C93490700DCFE1084 /* FanControl.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FanControl.entitlements; sourceTree = "<group>"; };
 		7653A2A6CFB882CE4819CFFE /* MainWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindow.swift; sourceTree = "<group>"; };
 		7B919BA76367F084A0006BE0 /* PopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverView.swift; sourceTree = "<group>"; };
+		8DE6AB5C2C3039F3BEEFEB4F /* StatusItemController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemController.swift; sourceTree = "<group>"; };
 		ABEDEE9F4CE9BFB97E4482D2 /* FanControl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FanControl.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BFE757E1C69C658BF8148621 /* HelperInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperInstaller.swift; sourceTree = "<group>"; };
 		D3BDBD6A27F07E14E64810EF /* HardwareMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HardwareMonitor.swift; sourceTree = "<group>"; };
@@ -98,6 +100,7 @@
 				583AD08C49ED5B9542FE4B92 /* HelperClient.swift */,
 				BFE757E1C69C658BF8148621 /* HelperInstaller.swift */,
 				F90ED8F455005C80EA7D73E5 /* HotKey.swift */,
+				8DE6AB5C2C3039F3BEEFEB4F /* StatusItemController.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -296,6 +299,7 @@
 				62430B32BA81E01D60763EF8 /* HotKey.swift in Sources */,
 				F6EEAA6A772101EE566D64CC /* MainWindow.swift in Sources */,
 				C3CBF2F76B00EE62516600EF /* PopoverView.swift in Sources */,
+				720B19D358CF495AAD6715E2 /* StatusItemController.swift in Sources */,
 				C9FD89742E93529A69F5181E /* Theme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

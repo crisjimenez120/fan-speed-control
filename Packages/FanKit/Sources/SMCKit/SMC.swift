@@ -62,6 +62,8 @@ func fourCCString(_ v: UInt32) -> String {
 /// Thin wrapper around an AppleSMC user-client connection. Not thread-safe; use from one actor.
 public final class SMC {
     private let conn: io_connect_t
+    /// Key metadata never changes at runtime, so look it up once per key.
+    private var infoCache: [UInt32: CSMCKeyInfo] = [:]
 
     public init() throws {
         conn = csmc_open()
@@ -71,16 +73,38 @@ public final class SMC {
     deinit { csmc_close(conn) }
 
     public func read(_ key: String) throws -> SMCValue {
-        var info = CSMCKeyInfo()
+        let code = fourCC(key)
         var buf = [UInt8](repeating: 0, count: 32)
-        let r = buf.withUnsafeMutableBufferPointer { csmc_read(conn, fourCC(key), &info, $0.baseAddress) }
-        if r == kIOReturnNotFound { throw SMCError.keyNotFound(key) }
-        if r != kIOReturnSuccess { throw SMCError.ioError(key, r) }
+        let info: CSMCKeyInfo
+        if let cached = infoCache[code] {
+            info = cached
+            let r = buf.withUnsafeMutableBufferPointer { csmc_read_sized(conn, code, cached.dataSize, $0.baseAddress) }
+            if r != kIOReturnSuccess { throw SMCError.ioError(key, r) }
+        } else {
+            var fresh = CSMCKeyInfo()
+            let r = buf.withUnsafeMutableBufferPointer { csmc_read(conn, code, &fresh, $0.baseAddress) }
+            if r == kIOReturnNotFound { throw SMCError.keyNotFound(key) }
+            if r != kIOReturnSuccess { throw SMCError.ioError(key, r) }
+            infoCache[code] = fresh
+            info = fresh
+        }
         return SMCValue(key: key, type: fourCCString(info.dataType), bytes: Array(buf.prefix(Int(info.dataSize))))
     }
 
     public func number(_ key: String) -> Double? {
         try? read(key).number
+    }
+
+    /// Fast path for `flt ` keys (all Apple Silicon temperatures): no allocation, one kernel call.
+    public func float(_ key: String) -> Double? {
+        let code = fourCC(key)
+        if infoCache[code] == nil { _ = try? read(key) }
+        guard let info = infoCache[code] else { return nil }
+        guard info.dataType == fourCC("flt "), info.dataSize == 4 else { return number(key) }
+        var tuple = (UInt64(0), UInt64(0), UInt64(0), UInt64(0))
+        let r = withUnsafeMutableBytes(of: &tuple) { csmc_read_sized(conn, code, 4, $0.baseAddress!.assumingMemoryBound(to: UInt8.self)) }
+        guard r == kIOReturnSuccess else { return nil }
+        return Double(Float(bitPattern: UInt32(truncatingIfNeeded: tuple.0)))
     }
 
     public func write(_ key: String, bytes: [UInt8]) throws {
@@ -129,6 +153,12 @@ public struct HIDTemperature: Sendable {
 }
 
 public enum HIDSensors {
+    /// Hottest HID sensor whose name starts with `prefix` (e.g. "NAND" for the SSD).
+    public static func maxTemperature(prefix: String) -> Double? {
+        let v = csmc_hid_max_temperature(prefix)
+        return v > 0 && v < 150 ? v : nil
+    }
+
     public static func temperatures() -> [HIDTemperature] {
         guard let array = csmc_copy_hid_temperatures()?.takeRetainedValue() as? [[String: Any]] else { return [] }
         return array.compactMap { d in

@@ -49,6 +49,7 @@ public final class HardwareReader {
     private var rawKeys: [(key: String, name: String, group: SensorGroup)] = []
     public private(set) var fanCount = 0
     private let isAppleSilicon: Bool
+    private var hasForceMask = false
 
     public init() throws {
         smc = try SMC()
@@ -56,6 +57,7 @@ public final class HardwareReader {
         uname(&sys)
         isAppleSilicon = withUnsafeBytes(of: &sys.machine) { String(decoding: $0.prefix { $0 != 0 }, as: UTF8.self) }.hasPrefix("arm64")
         fanCount = Int(smc.number("FNum") ?? 0)
+        hasForceMask = (try? smc.read("FS! ")) != nil
         discoverSensors()
     }
 
@@ -67,30 +69,41 @@ public final class HardwareReader {
         }
     }
 
+    /// Min/max RPM are fixed per fan; read once.
+    private lazy var fanLimits: [(min: Double, max: Double)] = (0..<fanCount).map { i in
+        (smc.number("F\(i)Mn") ?? 0, smc.number("F\(i)Mx") ?? 6000)
+    }
+
     public func readFans() -> [FanInfo] {
-        (0..<fanCount).map { i in
+        let forcedMask = hasForceMask ? smc.number("FS! ").map(Int.init) : nil
+        let limits = fanLimits
+        return (0..<fanCount).map { i in
             let mode = smc.number("F\(i)Md")
-            let forced = smc.number("FS! ").map { (Int($0) >> i) & 1 == 1 } ?? false
+            let forced = forcedMask.map { ($0 >> i) & 1 == 1 } ?? false
             return FanInfo(
                 index: i,
                 name: fanCount == 2 ? (i == 0 ? "Left Fan" : "Right Fan") : "Fan \(i + 1)",
-                currentRPM: max(0, smc.number("F\(i)Ac") ?? 0),
-                targetRPM: smc.number("F\(i)Tg") ?? 0,
-                minRPM: smc.number("F\(i)Mn") ?? 0,
-                maxRPM: smc.number("F\(i)Mx") ?? 6000,
+                currentRPM: max(0, smc.float("F\(i)Ac") ?? 0),
+                targetRPM: smc.float("F\(i)Tg") ?? 0,
+                minRPM: limits[i].min,
+                maxRPM: limits[i].max,
                 isManual: (mode ?? 0) == 1 || forced
             )
         }
     }
 
-    public func readSensors() -> [SensorReading] {
-        var raw: [SensorReading] = rawKeys.compactMap { k in
-            guard let v = smc.number(k.key), v > 0, v < 150 else { return nil }
-            return SensorReading(id: k.key, name: k.name, group: k.group, isSummary: false, celsius: v)
+    /// Reads temperatures. Pass `only` to read just what those sensor IDs need (summaries pull in
+    /// their source keys); nil reads everything.
+    public func readSensors(only ids: Set<String>? = nil) -> [SensorReading] {
+        let wanted = ids.map(SensorCatalog.rawKeyFilter)
+        var raw: [SensorReading] = []
+        raw.reserveCapacity(rawKeys.count + 1)
+        for k in rawKeys where wanted?(k.key, k.group) ?? true {
+            guard let v = smc.float(k.key), v > 0, v < 150 else { continue }
+            raw.append(SensorReading(id: k.key, name: k.name, group: k.group, isSummary: false, celsius: v))
         }
         // SSD temperature on Apple Silicon is only exposed over HID.
-        let hid = HIDSensors.temperatures()
-        if let nand = hid.filter({ $0.name.hasPrefix("NAND") }).map(\.celsius).max() {
+        if ids?.contains("hid.nand") ?? true, let nand = HIDSensors.maxTemperature(prefix: "NAND") {
             raw.append(SensorReading(id: "hid.nand", name: "SSD", group: .storage, isSummary: false, celsius: nand))
         }
         return SensorCatalog.summaries(from: raw) + raw
@@ -130,6 +143,20 @@ enum SensorCatalog {
         }
         if key.hasPrefix("TC"), chars[3] == "C", chars[2].isNumber { return ("CPU Core \(chars[2])", .cpu) }
         return nil
+    }
+
+    /// Which raw keys are needed to produce the given sensor IDs.
+    static func rawKeyFilter(_ ids: Set<String>) -> (String, SensorGroup) -> Bool {
+        let groups = Set(ids.compactMap { id -> SensorGroup? in
+            switch id {
+            case "cpu.max", "cpu.avg": .cpu
+            case "gpu.max": .gpu
+            case "mem.avg": .memory
+            case "bat.max": .battery
+            default: nil
+            }
+        })
+        return { key, group in ids.contains(key) || groups.contains(group) }
     }
 
     static func summaries(from raw: [SensorReading]) -> [SensorReading] {

@@ -82,29 +82,139 @@ struct RPMBar: View {
                 Capsule()
                     .fill(LinearGradient(colors: [.teal, Theme.color(forLoad: load)], startPoint: .leading, endPoint: .trailing))
                     .frame(width: max(6, geo.size.width * load))
-                    .animation(.smooth(duration: 0.6), value: load)
             }
         }
         .frame(height: 6)
     }
 }
 
-/// A fan glyph that spins at a speed proportional to RPM.
+/// A fan glyph that spins faster with RPM. The rotation is a Core Animation layer animation,
+/// so the render server runs it and our process does no per-frame work.
 struct SpinningFan: View {
     let rpm: Double
     var size: CGFloat = 22
+    var tint: Color = .secondary
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion || rpm < 1)) { context in
-            // Visual speed, not literal: ~0.5 rev/s at 1200 RPM up to ~2.5 rev/s at 6000.
-            let revsPerSecond = rpm / 2400
-            let angle = context.date.timeIntervalSinceReferenceDate * revsPerSecond * 360
-            Image(systemName: "fan.fill")
-                .font(.system(size: size, weight: .medium))
-                .rotationEffect(.degrees(reduceMotion ? 0 : angle.truncatingRemainder(dividingBy: 360)))
+        // Quantized so RPM jitter doesn't keep restarting the animation.
+        let revsPerSecond = rpm < 1 || reduceMotion ? 0 : max(0.25, (rpm / 2400 * 4).rounded() / 4)
+        SpinningSymbolView(symbol: "fan.fill", pointSize: size, revsPerSecond: revsPerSecond, tint: NSColor(tint))
+            .frame(width: size + 4, height: size + 4)
+    }
+}
+
+private struct SpinningSymbolView: NSViewRepresentable {
+    let symbol: String
+    let pointSize: CGFloat
+    let revsPerSecond: Double
+    let tint: NSColor
+
+    func makeNSView(context: Context) -> SpinnerView { SpinnerView() }
+
+    func updateNSView(_ view: SpinnerView, context: Context) {
+        view.tint = tint
+        view.configure(symbol: symbol, pointSize: pointSize, revsPerSecond: revsPerSecond)
+    }
+
+    final class SpinnerView: NSView {
+        private let imageLayer = CALayer()
+        private var symbol = ""
+        private var pointSize: CGFloat = 0
+        private var revsPerSecond: Double = -1
+
+        override init(frame: NSRect) {
+            super.init(frame: frame)
+            wantsLayer = true
+            layer?.addSublayer(imageLayer)
         }
-        .frame(width: size + 4, height: size + 4)
+
+        required init?(coder: NSCoder) { fatalError() }
+
+        override func layout() {
+            super.layout()
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            imageLayer.bounds = bounds
+            imageLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
+            CATransaction.commit()
+        }
+
+        // Dynamic colors (e.g. secondary label) resolve differently in light and dark mode.
+        override func viewDidChangeEffectiveAppearance() {
+            super.viewDidChangeEffectiveAppearance()
+            renderImage()
+        }
+
+        func configure(symbol: String, pointSize: CGFloat, revsPerSecond: Double) {
+            if symbol != self.symbol || pointSize != self.pointSize {
+                self.symbol = symbol
+                self.pointSize = pointSize
+                renderImage()
+            }
+            guard revsPerSecond != self.revsPerSecond else { return }
+            self.revsPerSecond = revsPerSecond
+            // Continue from the current angle so speed changes don't jump.
+            let current = (imageLayer.presentation()?.value(forKeyPath: "transform.rotation.z") as? Double) ?? 0
+            imageLayer.removeAnimation(forKey: "spin")
+            imageLayer.setValue(current, forKeyPath: "transform.rotation.z")
+            guard revsPerSecond > 0 else { return }
+            let spin = CABasicAnimation(keyPath: "transform.rotation.z")
+            spin.byValue = -2 * Double.pi
+            spin.duration = 1 / revsPerSecond
+            spin.repeatCount = .infinity
+            spin.isAdditive = true
+            imageLayer.add(spin, forKey: "spin")
+        }
+
+        private func renderImage() {
+            guard pointSize > 0 else { return }
+            var resolved = tint
+            effectiveAppearance.performAsCurrentDrawingAppearance { resolved = tint.usingColorSpace(.sRGB) ?? tint }
+            let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .medium)
+                .applying(.init(paletteColors: [resolved]))
+            guard let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?.withSymbolConfiguration(config) else { return }
+            imageLayer.contents = image
+            imageLayer.contentsGravity = .center
+            imageLayer.contentsScale = window?.backingScaleFactor ?? 2
+        }
+
+        var tint: NSColor = .secondaryLabelColor {
+            didSet { if tint != oldValue { renderImage() } }
+        }
+    }
+}
+
+/// Reports whether the hosting window is on screen. The menu bar popover's window stays alive
+/// when closed, so this lets us stop rendering it.
+struct WindowVisibilityReader: NSViewRepresentable {
+    let onChange: (Bool) -> Void
+
+    func makeNSView(context: Context) -> ObserverView {
+        let v = ObserverView()
+        v.onChange = onChange
+        return v
+    }
+
+    func updateNSView(_ view: ObserverView, context: Context) { view.onChange = onChange }
+
+    final class ObserverView: NSView {
+        var onChange: ((Bool) -> Void)?
+        private var token: NSObjectProtocol?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let token { NotificationCenter.default.removeObserver(token) }
+            guard let window else { return }
+            token = NotificationCenter.default.addObserver(forName: NSWindow.didChangeOcclusionStateNotification, object: window, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.report() }
+            }
+            report()
+        }
+
+        private func report() {
+            onChange?(window?.occlusionState.contains(.visible) ?? false)
+        }
     }
 }
 

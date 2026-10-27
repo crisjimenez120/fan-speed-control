@@ -12,9 +12,14 @@ import UserNotifications
 final class AppModel {
     private(set) var fans: [FanInfo] = []
     private(set) var sensors: [SensorReading] = []
-    private(set) var sensorHistory: [String: History] = [:]
-    private(set) var fanHistory: [Int: History] = [:]
+    /// Bumped once per refresh. Views that chart history read it to subscribe, then pull from `history`.
+    private(set) var historyTick = 0
+    /// Precomputed so the status item only re-renders when its text actually changes.
+    private(set) var menuBarText = ""
+    private(set) var sensorsByID: [String: SensorReading] = [:]
     private(set) var helperState: HelperState = .checking
+    /// The installed helper works but differs from the one bundled with this build.
+    private(set) var helperUpdateAvailable = false
     private(set) var hardwareAvailable = true
     private(set) var lastError: String?
     /// Fans the app has put in manual mode.
@@ -31,9 +36,16 @@ final class AppModel {
                 config.save()
             }
             if config.hotkeyEnabled != oldValue.hotkeyEnabled { updateHotKey() }
+            if config.menuBarStyle != oldValue.menuBarStyle || config.menuBarSensorID != oldValue.menuBarSensorID
+                || config.unit != oldValue.unit {
+                displayedMenuBarTemp = nil
+                updateMenuBarText(force: true)
+            }
         }
     }
 
+    @ObservationIgnored private var sensorHistory: [String: History] = [:]
+    @ObservationIgnored private var fanHistory: [Int: History] = [:]
     @ObservationIgnored private let monitor = HardwareMonitor()
     @ObservationIgnored private let helper = HelperClient()
     @ObservationIgnored private var controller = FanController()
@@ -42,6 +54,12 @@ final class AppModel {
     @ObservationIgnored private var loop: Task<Void, Never>?
     @ObservationIgnored private var sleeping = false
     @ObservationIgnored private let hotKey = HotKey()
+    @ObservationIgnored private var displayedMenuBarTemp: Double?
+    @ObservationIgnored private var displayedMenuBarRPM: Double?
+    @ObservationIgnored private var lastMenuBarUpdate = Date.distantPast
+    /// Open popovers/windows. While zero, refreshes read only the sensors something depends on.
+    @ObservationIgnored private var visibleUI = 0
+    @ObservationIgnored private var lastFullRead = Date.distantPast
     @ObservationIgnored private var saveTask: Task<Void, Never>?
     @ObservationIgnored private var ticking = false
     @ObservationIgnored private var tickRequested = false
@@ -56,7 +74,15 @@ final class AppModel {
 
     // MARK: Derived state
 
-    var sensorsByID: [String: SensorReading] { Dictionary(sensors.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }) }
+    func sensorSamples(_ id: String, last window: TimeInterval) -> [Sample] {
+        _ = historyTick
+        return sensorHistory[id]?.samples(last: window) ?? []
+    }
+
+    func fanSamples(_ index: Int, last window: TimeInterval) -> [Sample] {
+        _ = historyTick
+        return fanHistory[index]?.samples(last: window) ?? []
+    }
 
     var pinnedSensors: [SensorReading] {
         let byID = sensorsByID
@@ -173,10 +199,11 @@ final class AppModel {
                 : .notInstalled
             return
         }
-        // Same version string but a different binary means a rebuilt helper that hasn't been reinstalled.
-        let sameBinary = FileManager.default.contentsEqual(atPath: FanShared.HelperConstants.helperPath,
-                                                           andPath: HelperInstaller.bundledHelperURL.path)
-        helperState = version == FanShared.HelperConstants.version && sameBinary ? .ready : .outdated(installed: version)
+        // A different protocol version can't be used. A rebuilt binary with the same version still
+        // works, so keep controlling fans and just offer the update.
+        helperState = version == FanShared.HelperConstants.version ? .ready : .outdated(installed: version)
+        helperUpdateAvailable = helperState.isReady && !FileManager.default.contentsEqual(
+            atPath: FanShared.HelperConstants.helperPath, andPath: HelperInstaller.bundledHelperURL.path)
     }
 
     func installHelper() {
@@ -222,7 +249,9 @@ final class AppModel {
         hardwareAvailable = await monitor.isAvailable
         while !Task.isCancelled {
             await tick()
-            try? await Task.sleep(for: .seconds(config.updateInterval))
+            // Tolerance lets macOS coalesce our wakeups with others.
+            let interval = config.updateInterval
+            try? await Task.sleep(for: .seconds(interval), tolerance: .seconds(interval * 0.2))
         }
     }
 
@@ -245,13 +274,27 @@ final class AppModel {
     }
 
     private func tickOnce() async {
-        let snap = await monitor.snapshot()
         let now = Date()
-        fans = snap.fans
-        sensors = snap.sensors
+        let full = visibleUI > 0 || now.timeIntervalSince(lastFullRead) >= 10 || sensors.isEmpty
+        let snap = await monitor.snapshot(only: full ? nil : requiredSensorIDs)
+        if full { lastFullRead = now }
+        if fans != snap.fans { fans = snap.fans }
+        // A partial read refreshes what it read and keeps the last value for everything else.
+        let merged: [SensorReading]
+        if full {
+            merged = snap.sensors
+        } else {
+            let fresh = Dictionary(snap.sensors.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+            merged = sensors.map { fresh[$0.id] ?? $0 }
+        }
+        if sensors != merged {
+            sensors = merged
+            sensorsByID = Dictionary(merged.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        }
+        updateMenuBarText()
         if config.profiles.isEmpty, !snap.fans.isEmpty { restoreBuiltInProfiles() }
         applyLaunchProfileIfRequested()
-        recordHistory(now: now)
+        recordHistory(snap, now: now)
         evaluateAlerts()
         guard !sleeping else { return }
         await control(now: now)
@@ -266,9 +309,56 @@ final class AppModel {
         if let p = config.profiles.first(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) { apply(p) }
     }
 
-    private func recordHistory(now: Date) {
-        for s in sensors { sensorHistory[s.id, default: History()].append(s.celsius, at: now) }
-        for f in fans { fanHistory[f.index, default: History()].append(f.currentRPM, at: now) }
+    /// Sensors that fan modes, alerts, or the menu bar depend on.
+    private var requiredSensorIDs: Set<String> {
+        var ids = Set(config.liveModes.values.compactMap(\.sensorID))
+        ids.formUnion(config.alerts.filter(\.enabled).map(\.sensorID))
+        if config.menuBarStyle == .temperature || config.menuBarStyle == .both {
+            ids.insert(config.menuBarSensorID)
+            ids.insert("cpu.max")
+        }
+        return ids
+    }
+
+    func uiDidAppear() {
+        visibleUI += 1
+        requestTick()
+    }
+
+    func uiDidDisappear() {
+        visibleUI = max(0, visibleUI - 1)
+    }
+
+    private func recordHistory(_ snap: HardwareSnapshot, now: Date) {
+        for s in snap.sensors { sensorHistory[s.id, default: History()].append(s.celsius, at: now) }
+        for f in snap.fans { fanHistory[f.index, default: History()].append(f.currentRPM, at: now) }
+        historyTick &+= 1
+    }
+
+    /// The status item is expensive to redraw (once per display), so its text changes at most every
+    /// 3 s, and only when a value moves past a threshold.
+    private func updateMenuBarText(force: Bool = false) {
+        let now = Date()
+        guard force || now.timeIntervalSince(lastMenuBarUpdate) >= 3 else { return }
+        lastMenuBarUpdate = now
+        let text: String
+        // Hold the displayed value until it moves a full degree, so ±0.5° jitter doesn't redraw the menu bar.
+        if let t = menuBarTemperature {
+            if displayedMenuBarTemp.map({ abs($0 - t) >= 1 }) ?? true { displayedMenuBarTemp = t }
+        } else {
+            displayedMenuBarTemp = nil
+        }
+        let temp = format(displayedMenuBarTemp)
+        if displayedMenuBarRPM.map({ abs($0 - averageRPM) >= 100 }) ?? true { displayedMenuBarRPM = averageRPM }
+        let avg = displayedMenuBarRPM ?? 0
+        let rpm = fans.isEmpty ? "—" : avg >= 1000 ? String(format: "%.1fk", avg / 1000) : avg.rpmString
+        switch config.menuBarStyle {
+        case .icon: text = ""
+        case .temperature: text = temp
+        case .rpm: text = rpm
+        case .both: text = "\(temp) \(rpm)"
+        }
+        if text != menuBarText { menuBarText = text }
     }
 
     private func control(now: Date) async {

@@ -33,6 +33,18 @@ enum MainSection: String, CaseIterable, Identifiable, Hashable {
 }
 
 struct MainWindow: View {
+    @State private var visible = true
+
+    var body: some View {
+        // Minimized or fully covered windows stop observing the model.
+        Group {
+            if visible { MainWindowContent() } else { Color.clear }
+        }
+        .background(WindowVisibilityReader { visible = $0 })
+    }
+}
+
+struct MainWindowContent: View {
     @Environment(AppModel.self) private var model
     @State private var section: MainSection? = .fans
 
@@ -156,8 +168,8 @@ struct FanDetailCard: View {
             HStack(alignment: .top, spacing: 20) {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 10) {
-                        SpinningFan(rpm: fan.currentRPM, size: 28)
-                            .foregroundStyle(Theme.color(forLoad: (fan.currentRPM - fan.minRPM) / max(fan.maxRPM - fan.minRPM, 1)))
+                        SpinningFan(rpm: fan.currentRPM, size: 28,
+                                    tint: Theme.color(forLoad: (fan.currentRPM - fan.minRPM) / max(fan.maxRPM - fan.minRPM, 1)))
                         VStack(alignment: .leading) {
                             Text(fan.name).font(.title3.weight(.semibold))
                             Text("\(fan.minRPM.rpmString)–\(fan.maxRPM.rpmString) RPM").font(.caption).foregroundStyle(.secondary)
@@ -166,12 +178,10 @@ struct FanDetailCard: View {
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                         Text(fan.currentRPM.rpmString)
                             .font(.system(size: 40, weight: .semibold, design: .rounded).monospacedDigit())
-                            .contentTransition(.numericText(value: fan.currentRPM))
-                            .animation(.smooth, value: fan.currentRPM)
                         Text("RPM").foregroundStyle(.secondary)
                     }
                     RPMBar(fan: fan)
-                    Chart(model.fanHistory[fan.index]?.samples(last: 600) ?? [], id: \.date) { s in
+                    Chart(model.fanSamples(fan.index, last: 600), id: \.date) { s in
                         LineMark(x: .value("Time", s.date), y: .value("RPM", s.value))
                             .interpolationMethod(.monotone)
                             .foregroundStyle(.teal)
@@ -225,8 +235,7 @@ struct SensorsPane: View {
     @ViewBuilder
     private var detail: some View {
         if let id = selection, let s = model.sensorsByID[id] {
-            let history = model.sensorHistory[id]
-            let samples = history?.samples(last: window) ?? []
+            let samples = model.sensorSamples(id, last: window)
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading) {
@@ -296,7 +305,7 @@ struct SensorRow: View {
             }
             Text(sensor.name).fontWeight(sensor.isSummary ? .semibold : .regular)
             Spacer()
-            Sparkline(samples: model.sensorHistory[sensor.id]?.samples(last: 120) ?? [], color: Theme.color(forCelsius: sensor.celsius))
+            Sparkline(samples: model.sensorSamples(sensor.id, last: 120), color: Theme.color(forCelsius: sensor.celsius))
                 .frame(width: 50, height: 14)
             Text(model.format(sensor.celsius))
                 .monospacedDigit()
