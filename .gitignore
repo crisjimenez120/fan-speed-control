@@ -1,0 +1,6 @@
+build/
+.build/
+Packages/FanKit/.build/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+.DS_Store

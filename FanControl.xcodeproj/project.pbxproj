@@ -1,0 +1,582 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0C30FC60E631CE1373C61413 /* FanModeEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D544E68C99799278259D6532 /* FanModeEditor.swift */; };
+		1BE67B3036EFC23143283DE3 /* SMCKit in Frameworks */ = {isa = PBXBuildFile; productRef = 05AF0A03235B6B75F5007661 /* SMCKit */; };
+		2467E90DDA1EBF7159AE3D98 /* HelperClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 583AD08C49ED5B9542FE4B92 /* HelperClient.swift */; };
+		2EE279411096EA88FA1044B7 /* FanControlApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D80158DAF3DFB3C5771B4B84 /* FanControlApp.swift */; };
+		4698D26DF9F57D755AF7A5B2 /* FanShared in Frameworks */ = {isa = PBXBuildFile; productRef = 49EA01FD9C8E2B504F33AF36 /* FanShared */; };
+		5928BC367E4C807012D687B9 /* HardwareMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3BDBD6A27F07E14E64810EF /* HardwareMonitor.swift */; };
+		62430B32BA81E01D60763EF8 /* HotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90ED8F455005C80EA7D73E5 /* HotKey.swift */; };
+		A1B2ABBBE23C448B268E4250 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79D4EF65DAFB9036C5B56DA /* AppConfig.swift */; };
+		A751877F476B596B430CD3BE /* HelperInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFE757E1C69C658BF8148621 /* HelperInstaller.swift */; };
+		C3CBF2F76B00EE62516600EF /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B919BA76367F084A0006BE0 /* PopoverView.swift */; };
+		C9FD89742E93529A69F5181E /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30AE748A5BA89B2E1C255209 /* Theme.swift */; };
+		CBF9DFDF4862F94CCED6E002 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21F72D4DEA4733FE41331C09 /* AppModel.swift */; };
+		D90D5183C108585DB09B5BEE /* FanCore in Frameworks */ = {isa = PBXBuildFile; productRef = 822F289BFC787592597A06C1 /* FanCore */; };
+		ED0AAC92222458DD565F500B /* SMCKit in Frameworks */ = {isa = PBXBuildFile; productRef = 2E3BBC03F9E5F1E43558B928 /* SMCKit */; };
+		F6EEAA6A772101EE566D64CC /* MainWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7653A2A6CFB882CE4819CFFE /* MainWindow.swift */; };
+		FA0134B0788FCD2C80933F0C /* FanShared in Frameworks */ = {isa = PBXBuildFile; productRef = 92DA0F151A49700F3DA7380A /* FanShared */; };
+		FB218FF7BA694746EC9A872D /* CurveEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E938055FF73704224866834 /* CurveEditor.swift */; };
+		FF4C3ADDD5F55E6236F991E0 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F17EE9C75AB5F3CC80CC0DC /* main.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		602E4E57E178025443744BE7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 88A4CC1293BD6CDAF23D9A2A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CB1D710049C0147B9035F80E;
+			remoteInfo = FanControlHelper;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		06CD3AFA5B4BC21B1A229910 /* FanKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = FanKit; path = Packages/FanKit; sourceTree = SOURCE_ROOT; };
+		21F72D4DEA4733FE41331C09 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		2E938055FF73704224866834 /* CurveEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurveEditor.swift; sourceTree = "<group>"; };
+		30AE748A5BA89B2E1C255209 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		3F17EE9C75AB5F3CC80CC0DC /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		5745B7C29C5BCA362E41483D /* FanControlHelper */ = {isa = PBXFileReference; includeInIndex = 0; path = FanControlHelper; sourceTree = BUILT_PRODUCTS_DIR; };
+		583AD08C49ED5B9542FE4B92 /* HelperClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperClient.swift; sourceTree = "<group>"; };
+		674E7B5C93490700DCFE1084 /* FanControl.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FanControl.entitlements; sourceTree = "<group>"; };
+		7653A2A6CFB882CE4819CFFE /* MainWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindow.swift; sourceTree = "<group>"; };
+		7B919BA76367F084A0006BE0 /* PopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverView.swift; sourceTree = "<group>"; };
+		ABEDEE9F4CE9BFB97E4482D2 /* FanControl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FanControl.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BFE757E1C69C658BF8148621 /* HelperInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperInstaller.swift; sourceTree = "<group>"; };
+		D3BDBD6A27F07E14E64810EF /* HardwareMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HardwareMonitor.swift; sourceTree = "<group>"; };
+		D544E68C99799278259D6532 /* FanModeEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FanModeEditor.swift; sourceTree = "<group>"; };
+		D80158DAF3DFB3C5771B4B84 /* FanControlApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FanControlApp.swift; sourceTree = "<group>"; };
+		E79D4EF65DAFB9036C5B56DA /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
+		F90ED8F455005C80EA7D73E5 /* HotKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKey.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		163A017538F9EE53E4819051 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ED0AAC92222458DD565F500B /* SMCKit in Frameworks */,
+				FA0134B0788FCD2C80933F0C /* FanShared in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AFA985D53DB6387B7EF47804 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1BE67B3036EFC23143283DE3 /* SMCKit in Frameworks */,
+				D90D5183C108585DB09B5BEE /* FanCore in Frameworks */,
+				4698D26DF9F57D755AF7A5B2 /* FanShared in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0AD5979015B1E6F8C9EC3F10 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				674E7B5C93490700DCFE1084 /* FanControl.entitlements */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		119079C85E10F122767FB28E /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				E79D4EF65DAFB9036C5B56DA /* AppConfig.swift */,
+				21F72D4DEA4733FE41331C09 /* AppModel.swift */,
+				D3BDBD6A27F07E14E64810EF /* HardwareMonitor.swift */,
+				583AD08C49ED5B9542FE4B92 /* HelperClient.swift */,
+				BFE757E1C69C658BF8148621 /* HelperInstaller.swift */,
+				F90ED8F455005C80EA7D73E5 /* HotKey.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		1C149D0B04D8F1B06B4572A0 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				D80158DAF3DFB3C5771B4B84 /* FanControlApp.swift */,
+				0AD5979015B1E6F8C9EC3F10 /* Resources */,
+				119079C85E10F122767FB28E /* Services */,
+				F9E64E7B59B04EF0254AE827 /* Views */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		40495C59D26284FC76790D94 /* Helper */ = {
+			isa = PBXGroup;
+			children = (
+				3F17EE9C75AB5F3CC80CC0DC /* main.swift */,
+			);
+			path = Helper;
+			sourceTree = "<group>";
+		};
+		586E87D686F9353663A16261 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				ABEDEE9F4CE9BFB97E4482D2 /* FanControl.app */,
+				5745B7C29C5BCA362E41483D /* FanControlHelper */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5E64C2C21B095DEA34EE4631 = {
+			isa = PBXGroup;
+			children = (
+				1C149D0B04D8F1B06B4572A0 /* App */,
+				40495C59D26284FC76790D94 /* Helper */,
+				790FB5FD7AE6FB91D919F237 /* Packages */,
+				586E87D686F9353663A16261 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		790FB5FD7AE6FB91D919F237 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				06CD3AFA5B4BC21B1A229910 /* FanKit */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+		F9E64E7B59B04EF0254AE827 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				2E938055FF73704224866834 /* CurveEditor.swift */,
+				D544E68C99799278259D6532 /* FanModeEditor.swift */,
+				7653A2A6CFB882CE4819CFFE /* MainWindow.swift */,
+				7B919BA76367F084A0006BE0 /* PopoverView.swift */,
+				30AE748A5BA89B2E1C255209 /* Theme.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		CA78FFCC85DA0B3A361AA0C6 /* FanControl */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6B2827E94B27CFB5C7790244 /* Build configuration list for PBXNativeTarget "FanControl" */;
+			buildPhases = (
+				3B22CBB46333C6C03F02DCA1 /* Sources */,
+				AFA985D53DB6387B7EF47804 /* Frameworks */,
+				102803FC39D2DCD37F142E45 /* Embed privileged helper */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D552D498A65405F313E256F9 /* PBXTargetDependency */,
+			);
+			name = FanControl;
+			packageProductDependencies = (
+				05AF0A03235B6B75F5007661 /* SMCKit */,
+				822F289BFC787592597A06C1 /* FanCore */,
+				49EA01FD9C8E2B504F33AF36 /* FanShared */,
+			);
+			productName = FanControl;
+			productReference = ABEDEE9F4CE9BFB97E4482D2 /* FanControl.app */;
+			productType = "com.apple.product-type.application";
+		};
+		CB1D710049C0147B9035F80E /* FanControlHelper */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C5388211350A42671BA87039 /* Build configuration list for PBXNativeTarget "FanControlHelper" */;
+			buildPhases = (
+				8975BD517EF7EB6A6C0DB705 /* Sources */,
+				163A017538F9EE53E4819051 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = FanControlHelper;
+			packageProductDependencies = (
+				2E3BBC03F9E5F1E43558B928 /* SMCKit */,
+				92DA0F151A49700F3DA7380A /* FanShared */,
+			);
+			productName = FanControlHelper;
+			productReference = 5745B7C29C5BCA362E41483D /* FanControlHelper */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		88A4CC1293BD6CDAF23D9A2A /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					CA78FFCC85DA0B3A361AA0C6 = {
+						DevelopmentTeam = 7C9898VUH3;
+						ProvisioningStyle = Manual;
+					};
+					CB1D710049C0147B9035F80E = {
+						DevelopmentTeam = 7C9898VUH3;
+						ProvisioningStyle = Manual;
+					};
+				};
+			};
+			buildConfigurationList = 80E2050F945F9122E058EFAF /* Build configuration list for PBXProject "FanControl" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 5E64C2C21B095DEA34EE4631;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				2F246D141AC314A369F37069 /* XCLocalSwiftPackageReference "Packages/FanKit" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 586E87D686F9353663A16261 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				CA78FFCC85DA0B3A361AA0C6 /* FanControl */,
+				CB1D710049C0147B9035F80E /* FanControlHelper */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		102803FC39D2DCD37F142E45 /* Embed privileged helper */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/com.crisjimenez.FanControl.Helper",
+			);
+			name = "Embed privileged helper";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(WRAPPER_NAME)/Contents/Library/LaunchServices/com.crisjimenez.FanControl.Helper",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nDEST=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Contents/Library/LaunchServices\"\nmkdir -p \"$DEST\"\ncp -f \"${BUILT_PRODUCTS_DIR}/com.crisjimenez.FanControl.Helper\" \"$DEST/\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3B22CBB46333C6C03F02DCA1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B2ABBBE23C448B268E4250 /* AppConfig.swift in Sources */,
+				CBF9DFDF4862F94CCED6E002 /* AppModel.swift in Sources */,
+				FB218FF7BA694746EC9A872D /* CurveEditor.swift in Sources */,
+				2EE279411096EA88FA1044B7 /* FanControlApp.swift in Sources */,
+				0C30FC60E631CE1373C61413 /* FanModeEditor.swift in Sources */,
+				5928BC367E4C807012D687B9 /* HardwareMonitor.swift in Sources */,
+				2467E90DDA1EBF7159AE3D98 /* HelperClient.swift in Sources */,
+				A751877F476B596B430CD3BE /* HelperInstaller.swift in Sources */,
+				62430B32BA81E01D60763EF8 /* HotKey.swift in Sources */,
+				F6EEAA6A772101EE566D64CC /* MainWindow.swift in Sources */,
+				C3CBF2F76B00EE62516600EF /* PopoverView.swift in Sources */,
+				C9FD89742E93529A69F5181E /* Theme.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8975BD517EF7EB6A6C0DB705 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FF4C3ADDD5F55E6236F991E0 /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D552D498A65405F313E256F9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CB1D710049C0147B9035F80E /* FanControlHelper */;
+			targetProxy = 602E4E57E178025443744BE7 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		197600E182A52E4955C4D7E6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/Resources/FanControl.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Fan Control";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.crisjimenez.FanControl;
+				PRODUCT_NAME = "Fan Control";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		3E68AE3E7919816A7D2DDCC3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 7C9898VUH3;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		524A3DC73DC7099949AEEC7F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				OTHER_CODE_SIGN_FLAGS = "--identifier com.crisjimenez.FanControl.Helper";
+				PRODUCT_BUNDLE_IDENTIFIER = com.crisjimenez.FanControl.Helper;
+				PRODUCT_NAME = com.crisjimenez.FanControl.Helper;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		B2837509C9EB181B4CDE899E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				OTHER_CODE_SIGN_FLAGS = "--identifier com.crisjimenez.FanControl.Helper";
+				PRODUCT_BUNDLE_IDENTIFIER = com.crisjimenez.FanControl.Helper;
+				PRODUCT_NAME = com.crisjimenez.FanControl.Helper;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		C1E8583B3F3B4CDEAB973B2E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/Resources/FanControl.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Fan Control";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.crisjimenez.FanControl;
+				PRODUCT_NAME = "Fan Control";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		E4B63B6FD2624340ED1EC987 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 7C9898VUH3;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		6B2827E94B27CFB5C7790244 /* Build configuration list for PBXNativeTarget "FanControl" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				197600E182A52E4955C4D7E6 /* Debug */,
+				C1E8583B3F3B4CDEAB973B2E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		80E2050F945F9122E058EFAF /* Build configuration list for PBXProject "FanControl" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E4B63B6FD2624340ED1EC987 /* Debug */,
+				3E68AE3E7919816A7D2DDCC3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C5388211350A42671BA87039 /* Build configuration list for PBXNativeTarget "FanControlHelper" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B2837509C9EB181B4CDE899E /* Debug */,
+				524A3DC73DC7099949AEEC7F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		2F246D141AC314A369F37069 /* XCLocalSwiftPackageReference "Packages/FanKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/FanKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		05AF0A03235B6B75F5007661 /* SMCKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SMCKit;
+		};
+		2E3BBC03F9E5F1E43558B928 /* SMCKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = SMCKit;
+		};
+		49EA01FD9C8E2B504F33AF36 /* FanShared */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = FanShared;
+		};
+		822F289BFC787592597A06C1 /* FanCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = FanCore;
+		};
+		92DA0F151A49700F3DA7380A /* FanShared */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = FanShared;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 88A4CC1293BD6CDAF23D9A2A /* Project object */;
+}

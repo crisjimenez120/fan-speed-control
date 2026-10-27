@@ -1,0 +1,81 @@
+name: FanControl
+options:
+  bundleIdPrefix: com.crisjimenez
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    DEVELOPMENT_TEAM: 7C9898VUH3
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "Apple Development"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    ENABLE_HARDENED_RUNTIME: YES
+packages:
+  FanKit:
+    path: Packages/FanKit
+targets:
+  FanControl:
+    type: application
+    platform: macOS
+    sources:
+      - App
+    dependencies:
+      - package: FanKit
+        product: SMCKit
+      - package: FanKit
+        product: FanCore
+      - package: FanKit
+        product: FanShared
+      - target: FanControlHelper
+        embed: false
+        link: false
+    postBuildScripts:
+      - name: Embed privileged helper
+        script: |
+          set -e
+          DEST="${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Contents/Library/LaunchServices"
+          mkdir -p "$DEST"
+          cp -f "${BUILT_PRODUCTS_DIR}/com.crisjimenez.FanControl.Helper" "$DEST/"
+        inputFiles:
+          - $(BUILT_PRODUCTS_DIR)/com.crisjimenez.FanControl.Helper
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(WRAPPER_NAME)/Contents/Library/LaunchServices/com.crisjimenez.FanControl.Helper
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.crisjimenez.FanControl
+        PRODUCT_NAME: Fan Control
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_LSUIElement: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Fan Control
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_ENTITLEMENTS: App/Resources/FanControl.entitlements
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+  FanControlHelper:
+    type: tool
+    platform: macOS
+    sources:
+      - Helper
+    dependencies:
+      - package: FanKit
+        product: SMCKit
+      - package: FanKit
+        product: FanShared
+    settings:
+      base:
+        PRODUCT_NAME: com.crisjimenez.FanControl.Helper
+        PRODUCT_BUNDLE_IDENTIFIER: com.crisjimenez.FanControl.Helper
+        SKIP_INSTALL: YES
+        OTHER_CODE_SIGN_FLAGS: "--identifier com.crisjimenez.FanControl.Helper"
+schemes:
+  FanControl:
+    build:
+      targets:
+        FanControl: all
+    run:
+      config: Debug

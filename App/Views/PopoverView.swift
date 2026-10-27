@@ -1,0 +1,261 @@
+import FanCore
+import SMCKit
+import SwiftUI
+
+struct PopoverView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.openMain) private var openMain
+
+    var body: some View {
+        VStack(spacing: 12) {
+            header
+            if !model.hardwareAvailable {
+                Card { Label("Can't read the SMC on this Mac.", systemImage: "exclamationmark.triangle").foregroundStyle(.orange) }
+            }
+            HelperBanner()
+            if let err = model.lastError { ErrorBanner(message: err) }
+            ProfileChips()
+            ForEach(model.fans) { fan in FanCard(fan: fan) }
+            SensorStrip()
+            footer
+        }
+        .padding(14)
+        .frame(width: 360)
+    }
+
+    private var header: some View {
+        HStack(alignment: .center, spacing: 10) {
+            SpinningFan(rpm: model.averageRPM, size: 22)
+                .foregroundStyle(Theme.color(forLoad: model.fanLoad))
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Fan Control").font(.headline)
+                Text(model.activeProfile?.name ?? (model.config.liveModes.values.allSatisfy { $0 == .auto } ? "System control" : "Custom"))
+                    .font(.caption).foregroundStyle(.secondary)
+                    .contentTransition(.opacity)
+            }
+            Spacer()
+            if let t = model.sensorsByID["cpu.max"]?.celsius {
+                VStack(alignment: .trailing, spacing: 0) {
+                    Text(model.format(t))
+                        .font(.system(size: 26, weight: .semibold, design: .rounded).monospacedDigit())
+                        .foregroundStyle(Theme.color(forCelsius: t))
+                        .contentTransition(.numericText(value: t))
+                        .animation(.smooth, value: t)
+                    Text("CPU").font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private var footer: some View {
+        HStack {
+            Button {
+                openMain()
+            } label: {
+                Label("Open Fan Control", systemImage: "macwindow")
+            }
+            .buttonStyle(.glass)
+            Spacer()
+            Button {
+                model.resetAllToAuto()
+            } label: {
+                Label("All Auto", systemImage: "arrow.uturn.backward")
+            }
+            .buttonStyle(.glass)
+            .help("Hand every fan back to macOS")
+            Button {
+                NSApp.terminate(nil)
+            } label: {
+                Image(systemName: "power")
+            }
+            .buttonStyle(.glass)
+            .help("Quit Fan Control (fans return to automatic)")
+        }
+        .controlSize(.regular)
+    }
+}
+
+struct ProfileChips: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            GlassEffectContainer(spacing: 6) {
+                HStack(spacing: 6) {
+                    ForEach(model.config.profiles) { p in
+                        let active = p.id == model.config.activeProfileID
+                        Button {
+                            model.apply(p)
+                        } label: {
+                            Label(p.name, systemImage: p.symbol)
+                                .font(.callout.weight(active ? .semibold : .regular))
+                                .padding(.horizontal, 4)
+                        }
+                        .buttonStyle(active ? AnyPrimitiveButtonStyle(.glassProminent) : AnyPrimitiveButtonStyle(.glass))
+                        .controlSize(.small)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+        }
+        .scrollIndicators(.never)
+        .help("Cycle profiles with \(HotKey.displayString)")
+    }
+}
+
+/// Type-erases glass vs. prominent glass so chips can switch style with selection.
+struct AnyPrimitiveButtonStyle: PrimitiveButtonStyle {
+    private let make: (Configuration) -> AnyView
+    init<S: PrimitiveButtonStyle>(_ style: S) { make = { AnyView(style.makeBody(configuration: $0)) } }
+    func makeBody(configuration: Configuration) -> some View { make(configuration) }
+}
+
+struct FanCard: View {
+    @Environment(AppModel.self) private var model
+    let fan: FanInfo
+
+    var body: some View {
+        Card {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline) {
+                    SpinningFan(rpm: fan.currentRPM, size: 15)
+                        .foregroundStyle(.secondary)
+                    Text(fan.name).font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Text(fan.currentRPM.rpmString)
+                        .font(.system(.title3, design: .rounded).weight(.semibold).monospacedDigit())
+                        .contentTransition(.numericText(value: fan.currentRPM))
+                        .animation(.smooth, value: fan.currentRPM)
+                    Text("RPM").font(.caption2).foregroundStyle(.secondary)
+                }
+                RPMBar(fan: fan)
+                HStack {
+                    Text(fan.minRPM.rpmString)
+                    Spacer()
+                    if fan.isManual { Text("target \(fan.targetRPM.rpmString)") }
+                    Spacer()
+                    Text(fan.maxRPM.rpmString)
+                }
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.tertiary)
+                FanModeEditor(fan: fan, mode: model.mode(for: fan.index), compact: true) {
+                    model.setMode($0, for: fan.index)
+                }
+            }
+        }
+    }
+}
+
+struct SensorStrip: View {
+    @Environment(AppModel.self) private var model
+    @Environment(\.openMain) private var openMain
+
+    var body: some View {
+        Card(padding: 10) {
+            VStack(spacing: 6) {
+                ForEach(model.pinnedSensors) { s in
+                    HStack(spacing: 8) {
+                        Image(systemName: s.group.symbol)
+                            .frame(width: 18)
+                            .foregroundStyle(.secondary)
+                        Text(s.name).font(.callout).lineLimit(1)
+                        Spacer(minLength: 8)
+                        Sparkline(samples: model.sensorHistory[s.id]?.samples(last: 300) ?? [], color: Theme.color(forCelsius: s.celsius))
+                            .frame(width: 70, height: 18)
+                        Text(model.format(s.celsius))
+                            .font(.callout.monospacedDigit().weight(.medium))
+                            .foregroundStyle(Theme.color(forCelsius: s.celsius))
+                            .frame(width: 42, alignment: .trailing)
+                    }
+                }
+                Button {
+                    openMain(.sensors)
+                } label: {
+                    Text("All \(model.sensors.count) sensors")
+                        .font(.caption)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                .buttonStyle(.link)
+            }
+        }
+    }
+}
+
+struct HelperBanner: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let wantsManual = model.fans.contains { model.mode(for: $0.index) != .auto }
+        switch model.helperState {
+        case .ready, .checking:
+            EmptyView()
+        case .notInstalled where !wantsManual:
+            EmptyView()
+        default:
+            Card {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(title, systemImage: "lock.shield").font(.callout.weight(.semibold))
+                    Text("Reading temperatures works without it. Changing fan speed needs a small helper that runs as root. You'll be asked for your password once.")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(model.installing ? "Installing…" : "Install Helper") { model.installHelper() }
+                        .buttonStyle(.glassProminent)
+                        .disabled(model.installing)
+                }
+            }
+        }
+    }
+
+    private var title: String {
+        switch model.helperState {
+        case .outdated: "Helper update required"
+        case .failed: "Helper not responding"
+        default: "Install the fan helper"
+        }
+    }
+}
+
+struct ErrorBanner: View {
+    @Environment(AppModel.self) private var model
+    let message: String
+
+    var body: some View {
+        HStack(alignment: .top) {
+            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+            Text(message).font(.caption).fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            Button { model.clearError() } label: { Image(systemName: "xmark") }.buttonStyle(.plain)
+        }
+        .padding(10)
+        .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+struct MenuBarLabel: View {
+    let model: AppModel
+
+    var body: some View {
+        let temp = model.format(model.menuBarTemperature)
+        let avg = model.averageRPM
+        let rpm = model.fans.isEmpty ? "—" : avg >= 1000 ? String(format: "%.1fk", avg / 1000) : avg.rpmString
+        switch model.config.menuBarStyle {
+        case .icon:
+            Image(systemName: model.controlledFans.isEmpty ? "fan" : "fan.fill")
+        case .temperature:
+            HStack(spacing: 3) {
+                Image(systemName: model.controlledFans.isEmpty ? "fan" : "fan.fill")
+                Text(temp).monospacedDigit()
+            }
+        case .rpm:
+            HStack(spacing: 3) {
+                Image(systemName: model.controlledFans.isEmpty ? "fan" : "fan.fill")
+                Text(rpm).monospacedDigit()
+            }
+        case .both:
+            HStack(spacing: 3) {
+                Image(systemName: model.controlledFans.isEmpty ? "fan" : "fan.fill")
+                Text("\(temp) \(rpm)").monospacedDigit()
+            }
+        }
+    }
+}
