@@ -1,5 +1,6 @@
 import FanShared
 import Foundation
+import Security
 import SMCKit
 
 /// All SMC writes happen on this queue.
@@ -125,12 +126,25 @@ final class FanService: NSObject, FanHelperProtocol, @unchecked Sendable {
     }
 }
 
+/// The team that signed this helper; the app must be signed by the same team.
+func ownTeamID() -> String? {
+    var code: SecCode?
+    var staticCode: SecStaticCode?
+    var info: CFDictionary?
+    guard SecCodeCopySelf([], &code) == errSecSuccess, let code,
+          SecCodeCopyStaticCode(code, [], &staticCode) == errSecSuccess, let staticCode,
+          SecCodeCopySigningInformation(staticCode, SecCSFlags(rawValue: kSecCSSigningInformation), &info) == errSecSuccess
+    else { return nil }
+    return (info as? [String: Any])?[kSecCodeInfoTeamIdentifier as String] as? String
+}
+
 final class ListenerDelegate: NSObject, NSXPCListenerDelegate {
     let service: FanService
+    let requirement = HelperConstants.clientRequirement(teamID: ownTeamID())
     init(service: FanService) { self.service = service }
 
     func listener(_ listener: NSXPCListener, shouldAcceptNewConnection conn: NSXPCConnection) -> Bool {
-        conn.setCodeSigningRequirement(HelperConstants.clientRequirement)
+        conn.setCodeSigningRequirement(requirement)
         conn.exportedInterface = NSXPCInterface(with: FanHelperProtocol.self)
         conn.exportedObject = service
         let service = service
@@ -162,5 +176,5 @@ term.setEventHandler {
 }
 term.resume()
 
-NSLog("FanHelper \(HelperConstants.version) listening")
+NSLog("FanHelper \(HelperConstants.version) listening; client requirement: \(delegate.requirement)")
 dispatchMain()

@@ -43,6 +43,7 @@
 		2E938055FF73704224866834 /* CurveEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurveEditor.swift; sourceTree = "<group>"; };
 		30AE748A5BA89B2E1C255209 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		3F17EE9C75AB5F3CC80CC0DC /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		53CCEB7650C73DD426FF9B1D /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		5745B7C29C5BCA362E41483D /* FanControlHelper */ = {isa = PBXFileReference; includeInIndex = 0; path = FanControlHelper; sourceTree = BUILT_PRODUCTS_DIR; };
 		583AD08C49ED5B9542FE4B92 /* HelperClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperClient.swift; sourceTree = "<group>"; };
 		674E7B5C93490700DCFE1084 /* FanControl.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FanControl.entitlements; sourceTree = "<group>"; };
@@ -133,10 +134,19 @@
 			isa = PBXGroup;
 			children = (
 				1C149D0B04D8F1B06B4572A0 /* App */,
+				7738E9ECBE09B83A3C21B31C /* Config */,
 				40495C59D26284FC76790D94 /* Helper */,
 				790FB5FD7AE6FB91D919F237 /* Packages */,
 				586E87D686F9353663A16261 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		7738E9ECBE09B83A3C21B31C /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				53CCEB7650C73DD426FF9B1D /* Base.xcconfig */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 		790FB5FD7AE6FB91D919F237 /* Packages */ = {
@@ -215,11 +225,11 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					CA78FFCC85DA0B3A361AA0C6 = {
-						DevelopmentTeam = 7C9898VUH3;
+						DevelopmentTeam = "";
 						ProvisioningStyle = Manual;
 					};
 					CB1D710049C0147B9035F80E = {
-						DevelopmentTeam = 7C9898VUH3;
+						DevelopmentTeam = "";
 						ProvisioningStyle = Manual;
 					};
 				};
@@ -335,6 +345,7 @@
 		};
 		3E68AE3E7919816A7D2DDCC3 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 53CCEB7650C73DD426FF9B1D /* Base.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -366,11 +377,8 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = 7C9898VUH3;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -451,6 +459,7 @@
 		};
 		E4B63B6FD2624340ED1EC987 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 53CCEB7650C73DD426FF9B1D /* Base.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -482,11 +491,8 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = 7C9898VUH3;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;

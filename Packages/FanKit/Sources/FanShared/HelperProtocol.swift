@@ -6,9 +6,14 @@ public enum HelperConstants {
     public static let plistPath = "/Library/LaunchDaemons/com.crisjimenez.FanControl.Helper.plist"
     /// Bump whenever the helper's behavior changes so the app offers to reinstall it.
     public static let version = "1.0.0"
-    /// Only the signed FanControl app may connect.
-    public static let clientRequirement =
-        #"anchor apple generic and identifier "com.crisjimenez.FanControl" and certificate leaf[subject.OU] = "7C9898VUH3""#
+    public static let appIdentifier = "com.crisjimenez.FanControl"
+
+    /// Only the Fan Control app, signed by the same team as the helper, may connect.
+    /// Builds signed ad hoc (no team) fall back to checking the identifier only.
+    public static func clientRequirement(teamID: String?) -> String {
+        guard let teamID else { return #"identifier "\#(appIdentifier)""# }
+        return #"anchor apple generic and identifier "\#(appIdentifier)" and certificate leaf[subject.OU] = "\#(teamID)""#
+    }
     /// The helper restores automatic control if the app is silent this long.
     public static let watchdogTimeout: TimeInterval = 10
 }
