@@ -164,8 +164,7 @@ struct FanDetailCard: View {
                         }
                     }
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text(fan.currentRPM.rpmString)
-                            .font(.system(size: 40, weight: .semibold, design: .rounded).monospacedDigit())
+                        RollingNumber(value: fan.currentRPM, threshold: 50, size: 40) { (($0 / 10).rounded() * 10).rpmString }
                         Text("RPM").foregroundStyle(.secondary)
                     }
                     RPMBar(fan: fan)

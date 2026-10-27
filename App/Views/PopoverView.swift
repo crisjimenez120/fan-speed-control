@@ -34,9 +34,7 @@ struct PopoverView: View {
             Spacer()
             if let t = model.sensorsByID["cpu.max"]?.celsius {
                 VStack(alignment: .trailing, spacing: 0) {
-                    Text(model.format(t))
-                        .font(.system(size: 26, weight: .semibold, design: .rounded).monospacedDigit())
-                        .foregroundStyle(Theme.color(forCelsius: t))
+                    RollingNumber(value: t, threshold: 1, size: 26, color: Theme.color(forCelsius: t)) { model.format($0) }
                     Text("CPU").font(.caption2).foregroundStyle(.secondary)
                 }
             }
@@ -130,8 +128,7 @@ struct FanCard: View {
                     SpinningFan(rpm: fan.currentRPM, size: 15)
                     Text(fan.name).font(.subheadline.weight(.semibold))
                     Spacer()
-                    Text(fan.currentRPM.rpmString)
-                        .font(.system(.title3, design: .rounded).weight(.semibold).monospacedDigit())
+                    RollingNumber(value: fan.currentRPM, threshold: 50, size: 15) { (($0 / 10).rounded() * 10).rpmString }
                     Text("RPM").font(.caption2).foregroundStyle(.secondary)
                 }
                 RPMBar(fan: fan)

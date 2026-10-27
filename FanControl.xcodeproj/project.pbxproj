@@ -16,6 +16,7 @@
 		5928BC367E4C807012D687B9 /* HardwareMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3BDBD6A27F07E14E64810EF /* HardwareMonitor.swift */; };
 		62430B32BA81E01D60763EF8 /* HotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90ED8F455005C80EA7D73E5 /* HotKey.swift */; };
 		720B19D358CF495AAD6715E2 /* StatusItemController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DE6AB5C2C3039F3BEEFEB4F /* StatusItemController.swift */; };
+		9266CA7E912CACEEB932471B /* RollingNumber.swift in Sources */ = {isa = PBXBuildFile; fileRef = B03B4DDE9B21A5F16051BF3D /* RollingNumber.swift */; };
 		A1B2ABBBE23C448B268E4250 /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = E79D4EF65DAFB9036C5B56DA /* AppConfig.swift */; };
 		A751877F476B596B430CD3BE /* HelperInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFE757E1C69C658BF8148621 /* HelperInstaller.swift */; };
 		C3CBF2F76B00EE62516600EF /* PopoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B919BA76367F084A0006BE0 /* PopoverView.swift */; };
@@ -54,6 +55,7 @@
 		7B919BA76367F084A0006BE0 /* PopoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PopoverView.swift; sourceTree = "<group>"; };
 		8DE6AB5C2C3039F3BEEFEB4F /* StatusItemController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemController.swift; sourceTree = "<group>"; };
 		ABEDEE9F4CE9BFB97E4482D2 /* FanControl.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FanControl.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B03B4DDE9B21A5F16051BF3D /* RollingNumber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RollingNumber.swift; sourceTree = "<group>"; };
 		BFE757E1C69C658BF8148621 /* HelperInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelperInstaller.swift; sourceTree = "<group>"; };
 		D3BDBD6A27F07E14E64810EF /* HardwareMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HardwareMonitor.swift; sourceTree = "<group>"; };
 		D544E68C99799278259D6532 /* FanModeEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FanModeEditor.swift; sourceTree = "<group>"; };
@@ -170,6 +172,7 @@
 				D544E68C99799278259D6532 /* FanModeEditor.swift */,
 				7653A2A6CFB882CE4819CFFE /* MainWindow.swift */,
 				7B919BA76367F084A0006BE0 /* PopoverView.swift */,
+				B03B4DDE9B21A5F16051BF3D /* RollingNumber.swift */,
 				30AE748A5BA89B2E1C255209 /* Theme.swift */,
 			);
 			path = Views;
@@ -303,6 +306,7 @@
 				F6EEAA6A772101EE566D64CC /* MainWindow.swift in Sources */,
 				0A886155FCD1BE6D911CDF09 /* MenuBarPanel.swift in Sources */,
 				C3CBF2F76B00EE62516600EF /* PopoverView.swift in Sources */,
+				9266CA7E912CACEEB932471B /* RollingNumber.swift in Sources */,
 				720B19D358CF495AAD6715E2 /* StatusItemController.swift in Sources */,
 				C9FD89742E93529A69F5181E /* Theme.swift in Sources */,
 			);

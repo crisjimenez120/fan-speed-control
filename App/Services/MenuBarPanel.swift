@@ -6,11 +6,13 @@ import SwiftUI
 @MainActor
 final class MenuBarPanel: NSPanel {
     var onClose: (() -> Void)?
+    private let content: NSHostingController<AnyView>
     private var sizeObservation: NSKeyValueObservation?
     private var anchorTop: CGFloat = 0
     private var anchorMidX: CGFloat = 0
 
     init(content: NSHostingController<AnyView>) {
+        self.content = content
         super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         isFloatingPanel = true
         level = .statusBar
@@ -22,11 +24,12 @@ final class MenuBarPanel: NSPanel {
         isReleasedWhenClosed = false
         animationBehavior = .none
 
+        // The glass view hosts the SwiftUI view directly; the controller is retained, not installed
+        // as the window's contentViewController (which would pull its view back out of the glass).
         content.sizingOptions = .preferredContentSize
         let glass = NSGlassEffectView()
         glass.cornerRadius = 18
         glass.contentView = content.view
-        contentViewController = content
         contentView = glass
 
         sizeObservation = content.observe(\.preferredContentSize, options: [.new]) { [weak self] _, change in
@@ -39,8 +42,7 @@ final class MenuBarPanel: NSPanel {
 
     /// Renders once offscreen so the first real show doesn't pay for backing stores, fonts, and charts.
     func prewarm() {
-        guard let view = contentViewController?.view else { return }
-        resize(to: view.fittingSize)
+        resize(to: content.view.fittingSize)
         contentView?.layoutSubtreeIfNeeded()
         contentView?.displayIfNeeded()
     }
@@ -50,7 +52,7 @@ final class MenuBarPanel: NSPanel {
         let rect = buttonWindow.convertToScreen(button.convert(button.bounds, to: nil))
         anchorTop = rect.minY - 6
         anchorMidX = rect.midX
-        resize(to: frame.size == .zero ? (contentViewController?.view.fittingSize ?? .zero) : frame.size)
+        resize(to: content.view.fittingSize)
         alphaValue = 0
         makeKeyAndOrderFront(nil)
         NSAnimationContext.runAnimationGroup { ctx in
