@@ -30,7 +30,9 @@ final class AppModel {
     private(set) var hardwareAvailable = true
     private(set) var lastError: String?
     /// Fans the app has put in manual mode.
-    private(set) var controlledFans: Set<Int> = []
+    private(set) var controlledFans: Set<Int> = [] {
+        didSet { if controlledFans.isEmpty != oldValue.isEmpty { updateNapPolicy() } }
+    }
     var installing = false
 
     var config: AppConfig {
@@ -74,6 +76,11 @@ final class AppModel {
     @ObservationIgnored private var saveTask: Task<Void, Never>?
     @ObservationIgnored private var ticking = false
     @ObservationIgnored private var tickRequested = false
+    /// Display asleep or session inactive: nobody can see the menu bar, so don't redraw it.
+    @ObservationIgnored private var screenOff = false
+    /// Held while steering fans so App Nap can't stretch the loop past the helper's watchdog.
+    @ObservationIgnored private var napBlocker: NSObjectProtocol?
+    @ObservationIgnored private var lastHelperContact = Date.distantPast
 
     init() {
         config = AppConfig.load()
@@ -278,8 +285,10 @@ final class AppModel {
         hardwareAvailable = await monitor.isAvailable
         while !Task.isCancelled {
             await tick()
-            // Tolerance lets macOS coalesce our wakeups with others.
-            let interval = config.updateInterval
+            // Tolerance lets macOS coalesce our wakeups with others. With nothing on screen and no fan
+            // to steer, only the menu bar (throttled to 3 s) needs fresh readings.
+            let idle = visibleUI == 0 && controlledFans.isEmpty && !wantsManualControl
+            let interval = idle ? max(config.updateInterval, 3) : config.updateInterval
             try? await Task.sleep(for: .seconds(interval), tolerance: .seconds(interval * 0.2))
         }
     }
@@ -304,7 +313,7 @@ final class AppModel {
 
     private func tickOnce() async {
         let now = Date()
-        let full = visibleUI > 0 || now.timeIntervalSince(lastFullRead) >= 10 || liveSensors.isEmpty
+        let full = visibleUI > 0 || now.timeIntervalSince(lastFullRead) >= 30 || liveSensors.isEmpty
         let snap = await monitor.snapshot(only: full ? nil : requiredSensorIDs)
         if full { lastFullRead = now }
         liveFans = snap.fans
@@ -380,7 +389,7 @@ final class AppModel {
     /// 3 s, and only when a value moves past a threshold.
     private func updateMenuBarText(force: Bool = false) {
         let now = Date()
-        guard force || now.timeIntervalSince(lastMenuBarUpdate) >= 3 else { return }
+        guard force || (!screenOff && now.timeIntervalSince(lastMenuBarUpdate) >= 3) else { return }
         lastMenuBarUpdate = now
         let text: String
         // Hold the displayed value until it moves a full degree, so ±0.5° jitter doesn't redraw the menu bar.
@@ -405,7 +414,7 @@ final class AppModel {
 
     private func control(now: Date) async {
         let temps = liveSensorsByID.mapValues(\.celsius)
-        let wantsManual = liveFans.contains { mode(for: $0.index) != .auto }
+        let wantsManual = wantsManualControl
         guard helperState.isReady else {
             if wantsManual, helperState == .checking { await refreshHelperState() }
             return
@@ -421,6 +430,7 @@ final class AppModel {
                     await refreshHelperState()
                 } else {
                     lastSent[fan.index] = (rpm, now)
+                    lastHelperContact = now
                     controlledFans.insert(fan.index)
                 }
             } else if controlledFans.contains(fan.index) || fan.isManual {
@@ -432,7 +442,25 @@ final class AppModel {
                 }
             }
         }
-        if !controlledFans.isEmpty { helper.heartbeat() }
+        // Any write already counts as a heartbeat; otherwise ping well inside the watchdog window.
+        if !controlledFans.isEmpty, now.timeIntervalSince(lastHelperContact) >= 3 {
+            helper.heartbeat()
+            lastHelperContact = now
+        }
+    }
+
+    private var wantsManualControl: Bool { liveFans.contains { mode(for: $0.index) != .auto } }
+
+    private func updateNapPolicy() {
+        if controlledFans.isEmpty {
+            napBlocker.map(ProcessInfo.processInfo.endActivity)
+            napBlocker = nil
+        } else if napBlocker == nil {
+            napBlocker = ProcessInfo.processInfo.beginActivity(
+                options: [.userInitiatedAllowingIdleSystemSleep],
+                reason: "Steering fan speeds"
+            )
+        }
     }
 
     private func evaluateAlerts() {
@@ -473,6 +501,16 @@ final class AppModel {
                 self.sleeping = false
                 self.controller = FanController()
                 Task { await self.tick() }
+            }
+        }
+        for (name, off) in [(NSWorkspace.screensDidSleepNotification, true), (NSWorkspace.screensDidWakeNotification, false),
+                            (NSWorkspace.sessionDidResignActiveNotification, true), (NSWorkspace.sessionDidBecomeActiveNotification, false)] {
+            nc.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.screenOff = off
+                    if !off { self.updateMenuBarText(force: true) }
+                }
             }
         }
     }

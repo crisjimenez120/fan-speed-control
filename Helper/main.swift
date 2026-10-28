@@ -9,7 +9,12 @@ let queue = DispatchQueue(label: "fanhelper.smc")
 final class FanService: NSObject, FanHelperProtocol, @unchecked Sendable {
     private let smc: SMC
     private let fanCount: Int
-    private var manualFans: Set<Int> = []
+    private var manualFans: Set<Int> = [] {
+        didSet { if manualFans.isEmpty != oldValue.isEmpty { setWatchdogRunning(!manualFans.isEmpty) } }
+    }
+    private lazy var limits: [(lo: Double, hi: Double)] = (0..<fanCount).map { i in
+        (smc.number("F\(i)Mn") ?? 0, smc.number("F\(i)Mx") ?? 6000)
+    }
     private var lastHeartbeat = Date()
     private var connections = 0
     private var watchdog: DispatchSourceTimer?
@@ -18,8 +23,15 @@ final class FanService: NSObject, FanHelperProtocol, @unchecked Sendable {
         self.smc = smc
         fanCount = Int(smc.number("FNum") ?? 0)
         super.init()
+    }
+
+    /// The watchdog only runs while a fan is pinned, so an idle helper never wakes up.
+    private func setWatchdogRunning(_ running: Bool) {
+        watchdog?.cancel()
+        watchdog = nil
+        guard running else { return }
         let timer = DispatchSource.makeTimerSource(queue: queue)
-        timer.schedule(deadline: .now() + 2, repeating: 2)
+        timer.schedule(deadline: .now() + 2, repeating: 2, leeway: .seconds(1))
         timer.setEventHandler { [weak self] in self?.checkWatchdog() }
         timer.resume()
         watchdog = timer
@@ -55,8 +67,7 @@ final class FanService: NSObject, FanHelperProtocol, @unchecked Sendable {
 
     private func setManual(_ i: Int, rpm: Double) throws {
         guard i >= 0, i < fanCount else { throw SMCError.keyNotFound("F\(i)") }
-        let lo = smc.number("F\(i)Mn") ?? 0
-        let hi = smc.number("F\(i)Mx") ?? 6000
+        let (lo, hi) = limits[i]
         let target = rpm.isFinite ? min(max(rpm, lo), hi) : hi
         if !manualFans.contains(i) {
             // Newer Apple Silicon (M3+) locks fan writes behind Ftst; M1/M2 do not have it.

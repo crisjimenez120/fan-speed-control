@@ -17,10 +17,11 @@ struct RollingNumber: View {
 
     var body: some View {
         let font = Self.font(size: size, weight: weight)
+        let baseline = ceil(font.ascender)
         RollingDigits(value: value, threshold: threshold, font: font, color: NSColor(color), format: format)
             // SwiftUI doesn't read AppKit baselines, so declare it for neighbouring text like "RPM".
-            .alignmentGuide(.firstTextBaseline) { _ in ceil(font.ascender) }
-            .alignmentGuide(.lastTextBaseline) { _ in ceil(font.ascender) }
+            .alignmentGuide(.firstTextBaseline) { _ in baseline }
+            .alignmentGuide(.lastTextBaseline) { _ in baseline }
     }
 
     /// Rounded system font with monospaced digits, so digit slots have constant widths.
