@@ -211,26 +211,36 @@ struct CurveEditor: View {
 }
 
 /// Non-interactive thumbnail of a curve.
+/// Read-only curve preview, drawn as one path (it sits in every fan card, so it stays cheap).
 struct CurveThumbnail: View {
     let curve: FanCurve
     var currentTemp: Double?
 
     var body: some View {
-        Chart {
-            ForEach(curve.points.sorted { $0.temperature < $1.temperature }) { p in
-                AreaMark(x: .value("T", p.temperature), y: .value("P", p.percent))
-                    .foregroundStyle(LinearGradient(colors: [.orange.opacity(0.25), .clear], startPoint: .top, endPoint: .bottom))
-                LineMark(x: .value("T", p.temperature), y: .value("P", p.percent))
-                    .foregroundStyle(Theme.heat)
+        Canvas { context, size in
+            let points = curve.points.sorted { $0.temperature < $1.temperature }
+            guard let first = points.first, let last = points.last else { return }
+            func point(_ t: Double, _ p: Double) -> CGPoint {
+                // Inset so the stroke and dot aren't clipped at the edges.
+                CGPoint(x: 4 + (t.clamped(20, 110) - 20) / 90 * (size.width - 8),
+                        y: size.height - 4 - p.clamped(0, 100) / 100 * (size.height - 8))
             }
+            var line = Path()
+            line.addLines(points.map { point($0.temperature, $0.percent) })
+            var fill = line
+            fill.addLine(to: point(last.temperature, 0))
+            fill.addLine(to: point(first.temperature, 0))
+            fill.closeSubpath()
+            context.fill(fill, with: .linearGradient(
+                Gradient(colors: [.orange.opacity(0.25), .clear]), startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
+            context.stroke(line, with: .linearGradient(
+                Gradient(colors: [.teal, .green, .yellow, .orange, .red]),
+                startPoint: point(first.temperature, 0), endPoint: point(last.temperature, 0)),
+                style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
             if let t = currentTemp {
-                PointMark(x: .value("T", t.clamped(20, 110)), y: .value("P", curve.percent(at: t)))
-                    .symbolSize(30).foregroundStyle(.primary)
+                let c = point(t, curve.percent(at: t))
+                context.fill(Path(ellipseIn: CGRect(x: c.x - 3.5, y: c.y - 3.5, width: 7, height: 7)), with: .color(.accentColor))
             }
         }
-        .chartXScale(domain: 20...110)
-        .chartYScale(domain: 0...100)
-        .chartXAxis(.hidden)
-        .chartYAxis(.hidden)
     }
 }

@@ -1,4 +1,3 @@
-import Charts
 import FanCore
 import SMCKit
 import SwiftUI
@@ -46,28 +45,48 @@ struct Card<Content: View>: View {
     }
 }
 
+/// A tiny line-and-fill graph drawn as one path. Swift Charts is far heavier than this needs,
+/// and the sensor list shows dozens of these at once.
 struct Sparkline: View {
     let samples: [Sample]
     let color: Color
 
     var body: some View {
-        Chart(samples, id: \.date) { s in
-            AreaMark(x: .value("t", s.date), yStart: .value("min", lower), yEnd: .value("v", s.value))
-                .foregroundStyle(LinearGradient(colors: [color.opacity(0.35), color.opacity(0.0)], startPoint: .top, endPoint: .bottom))
-                .interpolationMethod(.monotone)
-            LineMark(x: .value("t", s.date), y: .value("v", s.value))
-                .foregroundStyle(color)
-                .lineStyle(StrokeStyle(lineWidth: 1.5))
-                .interpolationMethod(.monotone)
+        Canvas { context, size in
+            guard samples.count > 1, let first = samples.first, let last = samples.last else { return }
+            let values = samples.map(\.value)
+            let lo = values.min()! - 2, hi = values.max()! + 2
+            let t0 = first.date.timeIntervalSinceReferenceDate
+            let span = max(last.date.timeIntervalSinceReferenceDate - t0, 1)
+            func point(_ s: Sample) -> CGPoint {
+                CGPoint(x: (s.date.timeIntervalSinceReferenceDate - t0) / span * size.width,
+                        y: size.height - (s.value - lo) / (hi - lo) * size.height)
+            }
+            var line = Path()
+            line.addLines(samples.map(point))
+            var fill = line
+            fill.addLine(to: CGPoint(x: size.width, y: size.height))
+            fill.addLine(to: CGPoint(x: 0, y: size.height))
+            fill.closeSubpath()
+            context.fill(fill, with: .linearGradient(
+                Gradient(colors: [color.opacity(0.35), color.opacity(0)]),
+                startPoint: .zero, endPoint: CGPoint(x: 0, y: size.height)))
+            context.stroke(line, with: .color(color), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
         }
-        .chartXAxis(.hidden)
-        .chartYAxis(.hidden)
-        .chartYScale(domain: lower...upper)
-        .chartLegend(.hidden)
     }
+}
 
-    private var lower: Double { (samples.map(\.value).min() ?? 0) - 2 }
-    private var upper: Double { (samples.map(\.value).max() ?? 1) + 2 }
+extension Array where Element == Sample {
+    /// Averages into at most `count` buckets, so long ranges chart quickly without visible loss.
+    func downsampled(to count: Int) -> [Sample] {
+        guard self.count > count, count > 0 else { return self }
+        let size = Double(self.count) / Double(count)
+        return (0..<count).map { i in
+            let slice = self[Int(Double(i) * size)..<Swift.min(Int(Double(i + 1) * size), self.count)]
+            return Sample(date: slice[slice.startIndex + slice.count / 2].date,
+                          value: slice.reduce(0) { $0 + $1.value } / Double(slice.count))
+        }
+    }
 }
 
 /// Horizontal bar showing where the fan sits between its min and max RPM. The fill is a
@@ -259,19 +278,90 @@ struct SensorPicker: View, Equatable {
     }
 
     var body: some View {
-        let catalog = model.sensorCatalog
-        Picker(title, selection: Binding(get: { selection }, set: onChange)) {
+        let popUp = SensorPopUp(catalog: model.sensorCatalog, selection: selection, onChange: onChange)
+        if title.isEmpty {
+            popUp
+        } else {
+            LabeledContent(title) { popUp }
+        }
+    }
+}
+
+/// An AppKit pop-up whose menu is built only when it opens. A SwiftUI `Picker` keeps a live view
+/// for every option, which for ~90 sensors per picker was most of the panel's memory.
+private struct SensorPopUp: NSViewRepresentable {
+    let catalog: [SensorReading]
+    let selection: String
+    let onChange: @MainActor (String) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSView(context: Context) -> NSPopUpButton {
+        let button = NSPopUpButton(frame: .zero, pullsDown: false)
+        button.controlSize = .regular
+        button.menu?.delegate = context.coordinator
+        context.coordinator.button = button
+        button.target = context.coordinator
+        button.action = #selector(Coordinator.picked(_:))
+        button.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        return button
+    }
+
+    func updateNSView(_ button: NSPopUpButton, context: Context) {
+        let c = context.coordinator
+        c.catalog = catalog
+        c.selection = selection
+        c.onChange = onChange
+        c.showSelection(in: button)
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSPopUpButton, context: Context) -> CGSize? {
+        nsView.intrinsicContentSize
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, NSMenuDelegate {
+        var catalog: [SensorReading] = []
+        var selection = ""
+        var onChange: @MainActor (String) -> Void = { _ in }
+        weak var button: NSPopUpButton?
+        private var shown: String?
+
+        /// Until first opened, the menu holds just the selected item so the button can show its title.
+        /// Afterwards the full list (plain menu items, cheap) stays until the selection changes.
+        func showSelection(in button: NSPopUpButton) {
+            let title = catalog.first { $0.id == selection }?.name ?? "Unavailable sensor"
+            guard shown != title else { return }
+            shown = title
+            button.removeAllItems()
+            button.addItem(withTitle: title)
+            button.lastItem?.representedObject = selection
+            button.invalidateIntrinsicContentSize()
+        }
+
+        func menuNeedsUpdate(_ menu: NSMenu) {
+            menu.removeAllItems()
             let grouped = Dictionary(grouping: catalog, by: \.group)
-            ForEach(grouped.keys.sorted(), id: \.self) { group in
-                Section(group.rawValue) {
-                    ForEach(grouped[group]!.sorted { ($0.isSummary ? 0 : 1, $0.name) < ($1.isSummary ? 0 : 1, $1.name) }) { s in
-                        Text(s.name).tag(s.id)
-                    }
+            for group in grouped.keys.sorted() {
+                menu.addItem(.sectionHeader(title: group.rawValue))
+                for s in grouped[group]!.sorted(by: { ($0.isSummary ? 0 : 1, $0.name) < ($1.isSummary ? 0 : 1, $1.name) }) {
+                    let item = NSMenuItem(title: s.name, action: nil, keyEquivalent: "")
+                    item.representedObject = s.id
+                    menu.addItem(item)
                 }
             }
             if !catalog.contains(where: { $0.id == selection }) {
-                Text("Unavailable sensor").tag(selection)
+                menu.addItem(withTitle: "Unavailable sensor", action: nil, keyEquivalent: "").representedObject = selection
             }
+            if let index = menu.items.firstIndex(where: { $0.representedObject as? String == selection }) {
+                button?.selectItem(at: index)
+            }
+        }
+
+        @objc func picked(_ sender: NSPopUpButton) {
+            guard let id = sender.selectedItem?.representedObject as? String, id != selection else { return }
+            selection = id
+            onChange(id)
         }
     }
 }

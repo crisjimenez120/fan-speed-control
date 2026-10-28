@@ -168,7 +168,7 @@ struct FanDetailCard: View {
                         Text("RPM").foregroundStyle(.secondary)
                     }
                     RPMBar(fan: fan)
-                    Chart(model.fanSamples(fan.index, last: 600), id: \.date) { s in
+                    Chart(model.fanSamples(fan.index, last: 600).downsampled(to: 150), id: \.date) { s in
                         LineMark(x: .value("Time", s.date), y: .value("RPM", s.value))
                             .interpolationMethod(.monotone)
                             .foregroundStyle(.teal)
@@ -222,7 +222,7 @@ struct SensorsPane: View {
     @ViewBuilder
     private var detail: some View {
         if let id = selection, let s = model.sensorsByID[id] {
-            let samples = model.sensorSamples(id, last: window)
+            let samples = model.sensorSamples(id, last: window).downsampled(to: 300)
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading) {

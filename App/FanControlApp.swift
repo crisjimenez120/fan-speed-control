@@ -105,8 +105,8 @@ final class MainWindowController: NSObject, NSWindowDelegate {
         w.makeKeyAndOrderFront(nil)
     }
 
-    /// Built once and kept: closing only hides it, so reopening is instant. While hidden the model
-    /// doesn't publish, so its views do no work.
+    /// Built on open and torn down on close: its charts and sensor list are most of the app's memory,
+    /// and unlike the menu bar panel it doesn't need to appear instantly.
     private func makeWindow() -> NSWindow {
         let hosting = NSHostingController(rootView: MainWindow().environment(model).environment(\.appActions, actions))
         hosting.sceneBridgingOptions = [.toolbars, .title]
@@ -126,6 +126,14 @@ final class MainWindowController: NSObject, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         model.uiDidDisappear()
+        // Let AppKit finish closing before the window and its SwiftUI graph are released.
+        DispatchQueue.main.async { [self] in
+            guard let w = window, !w.isVisible else { return }
+            w.contentViewController = nil
+            window = nil
+            // Hand the freed pages back to the system now rather than whenever memory gets tight.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { malloc_zone_pressure_relief(nil, 0) }
+        }
     }
 }
 
