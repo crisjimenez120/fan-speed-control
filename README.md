@@ -21,7 +21,7 @@ A menu bar app for controlling your Mac's fans. It's a native SwiftUI replacemen
 - **Alerts**: a notification when a sensor goes over a threshold.
 - **Menu bar item**: shows an icon, a temperature, fan speed, or both.
 - Launch at login, °C or °F, and an adjustable update interval.
-- **Lightweight**: about 0.5% CPU in the background. Nothing renders while the panel and window are closed, and they reopen instantly.
+- **Lightweight**: under 1% CPU and about 30 MB of memory in the background. Nothing renders while the panel and window are closed, and the menu bar panel still opens instantly.
 - **Safe by design**: fans go back to macOS control when the app quits, crashes, or stops responding for 10 seconds, and whenever the Mac sleeps.
 
 ## Requirements
