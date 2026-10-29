@@ -9,6 +9,13 @@ enum HelperState: Equatable {
     case failed(String)
 
     var isReady: Bool { self == .ready }
+    /// States worth re-checking on their own; the others need the user to install or update.
+    var canRetry: Bool {
+        switch self {
+        case .checking, .failed: true
+        default: false
+        }
+    }
 }
 
 /// Talks to the privileged helper over XPC.
@@ -76,6 +83,11 @@ final class HelperClient {
     private func call(_ body: (FanHelperProtocol, @escaping @Sendable (String?) -> Void) -> Void) async -> String? {
         await withCheckedContinuation { (cont: CheckedContinuation<String?, Never>) in
             let once = Once(cont)
+            // A reply lost across sleep would otherwise hang the control loop forever.
+            Task {
+                try? await Task.sleep(for: .seconds(3))
+                once.resume("The helper didn't respond")
+            }
             guard let p = proxy(onError: { once.resume($0.localizedDescription) }) else {
                 return once.resume("Helper unavailable")
             }

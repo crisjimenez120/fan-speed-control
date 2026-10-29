@@ -81,6 +81,7 @@ final class AppModel {
     /// Held while steering fans so App Nap can't stretch the loop past the helper's watchdog.
     @ObservationIgnored private var napBlocker: NSObjectProtocol?
     @ObservationIgnored private var lastHelperContact = Date.distantPast
+    @ObservationIgnored private var lastHelperCheck = Date.distantPast
 
     init() {
         config = AppConfig.load()
@@ -237,7 +238,9 @@ final class AppModel {
         }
         // A different protocol version can't be used. A rebuilt binary with the same version still
         // works, so keep controlling fans and just offer the update.
+        let recovered = helperState.canRetry
         helperState = version == FanShared.HelperConstants.version ? .ready : .outdated(installed: version)
+        if recovered, helperState.isReady { lastError = nil }
         helperUpdateAvailable = helperState.isReady && !FileManager.default.contentsEqual(
             atPath: FanShared.HelperConstants.helperPath, andPath: HelperInstaller.bundledHelperURL.path)
     }
@@ -416,7 +419,11 @@ final class AppModel {
         let temps = liveSensorsByID.mapValues(\.celsius)
         let wantsManual = wantsManualControl
         guard helperState.isReady else {
-            if wantsManual, helperState == .checking { await refreshHelperState() }
+            // A failed check (often a stale connection right after wake) must not stop control for good.
+            if wantsManual, helperState.canRetry, now.timeIntervalSince(lastHelperCheck) >= 5 {
+                lastHelperCheck = now
+                await refreshHelperState()
+            }
             return
         }
         for fan in liveFans {
@@ -490,6 +497,8 @@ final class AppModel {
                 self.sleeping = true
                 Task {
                     _ = await self.helper.setAllAuto()
+                    // The reply can land after wake; don't clobber control that has already resumed.
+                    guard self.sleeping else { return }
                     self.controlledFans = []
                     self.lastSent = [:]
                 }
@@ -500,7 +509,13 @@ final class AppModel {
                 guard let self else { return }
                 self.sleeping = false
                 self.controller = FanController()
-                Task { await self.tick() }
+                // The SMC and the helper may have reset the fans while we slept: reconnect and re-send.
+                self.lastSent = [:]
+                self.helper.reset()
+                Task {
+                    await self.refreshHelperState()
+                    await self.tick()
+                }
             }
         }
         for (name, off) in [(NSWorkspace.screensDidSleepNotification, true), (NSWorkspace.screensDidWakeNotification, false),
